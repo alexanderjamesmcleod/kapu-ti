@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import { Card, CardHand, SentenceBuilder } from '@/components';
-import { validateKoSentence, validateHeSentence } from '@/lib';
-import { ALL_WORDS, SAMPLE_CHALLENGES, type Challenge } from '@/data';
+import { validateKoSentence, validateHeSentence, validateKeiTeSentence } from '@/lib';
+import { ALL_WORDS, SAMPLE_CHALLENGES, getWordById, type Challenge } from '@/data';
 import type { Card as CardType, ValidationResult } from '@/types';
 import type { Challenge as ValidatorChallenge } from '@/types/validation.types';
 import { playSentence, AUDIO_ATTRIBUTION } from '@/lib/audio';
@@ -62,24 +63,66 @@ function getPatternColors(pattern: string[]): string[] {
   return pattern.map(p => typeToColor[p] || 'gray');
 }
 
-export default function PlayPage() {
-  // Game state
-  const [playerHand, setPlayerHand] = useState<CardType[]>(() => {
-    const cards = ALL_WORDS.slice(0, 30).map(wordToCard);
-    return shuffle(cards).slice(0, 7);
-  });
+// Get required cards for a challenge
+function getRequiredCardsForChallenge(challenge: Challenge): CardType[] {
+  if (!challenge.requiredCards) return [];
+  return challenge.requiredCards
+    .map(id => getWordById(id))
+    .filter(Boolean)
+    .map(word => wordToCard(word!));
+}
 
+// Setup a new challenge with guaranteed solvable hand
+function setupChallenge(): { challenge: Challenge; hand: CardType[]; deck: CardType[] } {
+  // Pick a random challenge
+  const challenge = SAMPLE_CHALLENGES[Math.floor(Math.random() * SAMPLE_CHALLENGES.length)];
+
+  // Get required cards for the challenge
+  const requiredCards = getRequiredCardsForChallenge(challenge);
+  const requiredIds = new Set(requiredCards.map(c => c.id));
+
+  // Get all other cards (excluding required ones)
+  const otherCards = ALL_WORDS
+    .filter(w => !requiredIds.has(w.id))
+    .map(wordToCard);
+
+  // Shuffle other cards
+  const shuffledOthers = shuffle(otherCards);
+
+  // Hand = required cards + some extras (up to 7 total)
+  const extraCount = Math.max(0, 7 - requiredCards.length);
+  const extraCards = shuffledOthers.slice(0, extraCount);
+  const hand = shuffle([...requiredCards, ...extraCards]);
+
+  // Deck = remaining cards
+  const deck = shuffledOthers.slice(extraCount);
+
+  return { challenge, hand, deck };
+}
+
+export default function PlayPage() {
+  // Game state - use deterministic initial values to avoid hydration mismatch
+  const [playerHand, setPlayerHand] = useState<CardType[]>([]);
+  const [drawPile, setDrawPile] = useState<CardType[]>([]);
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const [placedCards, setPlacedCards] = useState<(CardType | null)[]>([]);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [score, setScore] = useState(0);
-  const [currentChallenge, setCurrentChallenge] = useState(() =>
-    SAMPLE_CHALLENGES[Math.floor(Math.random() * SAMPLE_CHALLENGES.length)]
-  );
+  const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  // Initialize game on client only to avoid hydration mismatch
+  useEffect(() => {
+    setIsClient(true);
+    const { challenge, hand, deck } = setupChallenge();
+    setCurrentChallenge(challenge);
+    setPlayerHand(hand);
+    setDrawPile(deck);
+  }, []);
 
   // Pattern for current challenge
   const slotColors = useMemo(
-    () => getPatternColors(currentChallenge.pattern),
+    () => currentChallenge ? getPatternColors(currentChallenge.pattern) : [],
     [currentChallenge]
   );
 
@@ -130,7 +173,7 @@ export default function PlayPage() {
   // Validate the built sentence
   const handleValidate = useCallback(() => {
     const cards = placedCards.filter(Boolean) as CardType[];
-    if (cards.length === 0) return;
+    if (cards.length === 0 || !currentChallenge) return;
 
     // Determine which validator to use
     let result: ValidationResult;
@@ -142,6 +185,8 @@ export default function PlayPage() {
       result = validateKoSentence(cards, validatorChallenge);
     } else if (firstCard.maori === 'He') {
       result = validateHeSentence(cards, validatorChallenge);
+    } else if (firstCard.maori === 'Kei te') {
+      result = validateKeiTeSentence(cards, validatorChallenge);
     } else {
       // Default validation
       result = {
@@ -149,8 +194,8 @@ export default function PlayPage() {
         correct: false,
         feedback: {
           type: 'error',
-          message: 'Start with Ko or He for this challenge',
-          hint: 'The first card should be a particle (purple)',
+          message: 'Start with Ko, He, or Kei te',
+          hint: 'Use a sentence starter particle (purple/yellow)',
         },
         translation: '',
         breakdown: [],
@@ -166,30 +211,57 @@ export default function PlayPage() {
     }
   }, [placedCards, currentChallenge]);
 
+  // Draw a card from the pile
+  const handleDrawCard = useCallback(() => {
+    if (drawPile.length === 0) return;
+
+    const [drawnCard, ...remainingPile] = drawPile;
+    setDrawPile(remainingPile);
+    setPlayerHand(prev => [...prev, drawnCard]);
+  }, [drawPile]);
+
   // Next challenge
   const handleNextChallenge = useCallback(() => {
-    // Clear the builder but keep cards that were placed
+    // Setup new challenge with fresh hand containing required cards
+    const { challenge, hand, deck } = setupChallenge();
+
     setPlacedCards([]);
     setValidation(null);
-    setCurrentChallenge(
-      SAMPLE_CHALLENGES[Math.floor(Math.random() * SAMPLE_CHALLENGES.length)]
-    );
+    setCurrentChallenge(challenge);
+    setPlayerHand(hand);
+    setDrawPile(deck);
+  }, []);
 
-    // Deal more cards if hand is low
-    if (playerHand.length < 5) {
-      const newCards = shuffle(ALL_WORDS.slice(0, 30).map(wordToCard)).slice(0, 3);
-      setPlayerHand(prev => [...prev, ...newCards]);
-    }
-  }, [playerHand.length]);
+  // Show loading state during SSR/hydration
+  if (!isClient || !currentChallenge) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-teal-50 to-blue-50 p-4 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-teal-800 mb-4">Kapu Ti</h1>
+          <p className="text-gray-600">Loading game...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-teal-50 to-blue-50 p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <header className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-teal-800 mb-2">
-            Kapu Tī 🍵
-          </h1>
+          <div className="flex justify-between items-start mb-2">
+            <div></div>
+            <h1 className="text-4xl font-bold text-teal-800">
+              Kapu Ti
+            </h1>
+            <Link
+              href="/play/multiplayer"
+              className="px-3 py-1 bg-amber-500 text-white text-sm rounded-lg
+                       hover:bg-amber-600 transition-colors font-semibold"
+            >
+              Multiplayer
+            </Link>
+          </div>
           <p className="text-gray-600">
             Build sentences, empty your hand, or make the tea!
           </p>
@@ -248,11 +320,24 @@ export default function PlayPage() {
           </div>
         </div>
 
-        {/* Player Hand */}
+        {/* Player Hand + Draw Pile */}
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-2 text-center">
-            Your Hand {selectedCard && '(tap a slot to place)'}
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-700">
+              Your Hand {selectedCard && '(tap a slot to place)'}
+            </h3>
+            {/* Draw Pile */}
+            <button
+              onClick={handleDrawCard}
+              disabled={drawPile.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg
+                       font-bold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed
+                       transition-colors shadow-md"
+            >
+              <span className="text-xl">🃏</span>
+              <span>Draw ({drawPile.length})</span>
+            </button>
+          </div>
           <CardHand
             cards={playerHand}
             selectedCardId={selectedCard?.id}

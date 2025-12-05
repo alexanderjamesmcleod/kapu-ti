@@ -204,28 +204,15 @@ export const MODULE_2: Module = {
 export const CURRICULUM: Module[] = [MODULE_1, MODULE_2];
 
 // Sample challenges for database seeding
+// Following the 12 Guidelines: Start simple, everyday contexts, natural Māori
 export const SAMPLE_CHALLENGES: Challenge[] = [
-  // Module 1 challenges
+  // ============================================================================
+  // MODULE 1: Ko/He Sentences - Progressive Difficulty
+  // ============================================================================
+
+  // --- EASY: 2-card He sentences (classification) ---
   {
-    id: 'c_1_1_1',
-    type: 'build',
-    difficulty: 'easy',
-    instruction: 'Build this sentence:',
-    target: { maori: 'Ko te whare', english: 'The house' },
-    pattern: ['Ko', 'te', 'noun'],
-    requiredCards: ['p_ko', 'art_te', 'n_whare']
-  },
-  {
-    id: 'c_1_1_2',
-    type: 'build',
-    difficulty: 'easy',
-    instruction: 'Build this sentence:',
-    target: { maori: 'Ko ngā ngeru', english: 'The cats' },
-    pattern: ['Ko', 'ngā', 'noun'],
-    requiredCards: ['p_ko', 'art_nga', 'n_ngeru']
-  },
-  {
-    id: 'c_1_2_1',
+    id: 'c_he_house',
     type: 'build',
     difficulty: 'easy',
     instruction: 'Build: A house',
@@ -234,7 +221,148 @@ export const SAMPLE_CHALLENGES: Challenge[] = [
     requiredCards: ['p_he', 'n_whare']
   },
   {
-    id: 'c_1_4_1',
+    id: 'c_he_cat',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: A cat',
+    target: { maori: 'He ngeru', english: 'A cat' },
+    pattern: ['He', 'noun'],
+    requiredCards: ['p_he', 'n_ngeru']
+  },
+  {
+    id: 'c_he_dog',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: A dog',
+    target: { maori: 'He kuri', english: 'A dog' },
+    pattern: ['He', 'noun'],
+    requiredCards: ['p_he', 'n_kuri']
+  },
+  {
+    id: 'c_he_teacher',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: A teacher',
+    target: { maori: 'He kaiako', english: 'A teacher' },
+    pattern: ['He', 'noun'],
+    requiredCards: ['p_he', 'n_kaiako']
+  },
+  {
+    id: 'c_he_child',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: A child',
+    target: { maori: 'He tamaiti', english: 'A child' },
+    pattern: ['He', 'noun'],
+    requiredCards: ['p_he', 'n_tamaiti']
+  },
+  {
+    id: 'c_he_student',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: A student',
+    target: { maori: 'He tauira', english: 'A student' },
+    pattern: ['He', 'noun'],
+    requiredCards: ['p_he', 'n_tauira']
+  },
+  {
+    id: 'c_he_bird',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: A bird',
+    target: { maori: 'He manu', english: 'A bird' },
+    pattern: ['He', 'noun'],
+    requiredCards: ['p_he', 'n_manu']
+  },
+
+  // --- EASY: 3-card Ko sentences (specific things) ---
+  {
+    id: 'c_ko_house',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: The house',
+    target: { maori: 'Ko te whare', english: 'The house' },
+    pattern: ['Ko', 'te', 'noun'],
+    requiredCards: ['p_ko', 'art_te', 'n_whare']
+  },
+  {
+    id: 'c_ko_cat',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: The cat',
+    target: { maori: 'Ko te ngeru', english: 'The cat' },
+    pattern: ['Ko', 'te', 'noun'],
+    requiredCards: ['p_ko', 'art_te', 'n_ngeru']
+  },
+  {
+    id: 'c_ko_dog',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: The dog',
+    target: { maori: 'Ko te kuri', english: 'The dog' },
+    pattern: ['Ko', 'te', 'noun'],
+    requiredCards: ['p_ko', 'art_te', 'n_kuri']
+  },
+  {
+    id: 'c_ko_teacher',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: The teacher',
+    target: { maori: 'Ko te kaiako', english: 'The teacher' },
+    pattern: ['Ko', 'te', 'noun'],
+    requiredCards: ['p_ko', 'art_te', 'n_kaiako']
+  },
+  {
+    id: 'c_ko_child',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: The child',
+    target: { maori: 'Ko te tamaiti', english: 'The child' },
+    pattern: ['Ko', 'te', 'noun'],
+    requiredCards: ['p_ko', 'art_te', 'n_tamaiti']
+  },
+
+  // --- MEDIUM: 3-card Ko sentences with plural ---
+  {
+    id: 'c_ko_cats',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: The cats',
+    target: { maori: 'Ko ngā ngeru', english: 'The cats' },
+    pattern: ['Ko', 'ngā', 'noun'],
+    requiredCards: ['p_ko', 'art_nga', 'n_ngeru']
+  },
+  {
+    id: 'c_ko_dogs',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: The dogs',
+    target: { maori: 'Ko ngā kuri', english: 'The dogs' },
+    pattern: ['Ko', 'ngā', 'noun'],
+    requiredCards: ['p_ko', 'art_nga', 'n_kuri']
+  },
+  {
+    id: 'c_ko_children',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: The children',
+    target: { maori: 'Ko ngā tamariki', english: 'The children' },
+    pattern: ['Ko', 'ngā', 'noun'],
+    requiredCards: ['p_ko', 'art_nga', 'n_tamariki']
+  },
+  {
+    id: 'c_ko_birds',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: The birds',
+    target: { maori: 'Ko ngā manu', english: 'The birds' },
+    pattern: ['Ko', 'ngā', 'noun'],
+    requiredCards: ['p_ko', 'art_nga', 'n_manu']
+  },
+
+  // --- MEDIUM: 4-card Equative sentences (identity) ---
+  {
+    id: 'c_equative_i_teacher',
     type: 'build',
     difficulty: 'medium',
     instruction: 'Build: I am the teacher',
@@ -242,9 +370,32 @@ export const SAMPLE_CHALLENGES: Challenge[] = [
     pattern: ['Ko', 'pronoun', 'te', 'noun'],
     requiredCards: ['p_ko', 'pr_au', 'art_te', 'n_kaiako']
   },
-  // Module 2 challenges
   {
-    id: 'c_2_1_1',
+    id: 'c_equative_you_student',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: You are the student',
+    target: { maori: 'Ko koe te tauira', english: 'You are the student' },
+    pattern: ['Ko', 'pronoun', 'te', 'noun'],
+    requiredCards: ['p_ko', 'pr_koe', 'art_te', 'n_tauira']
+  },
+  {
+    id: 'c_equative_she_teacher',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: He/she is the teacher',
+    target: { maori: 'Ko ia te kaiako', english: 'He/she is the teacher' },
+    pattern: ['Ko', 'pronoun', 'te', 'noun'],
+    requiredCards: ['p_ko', 'pr_ia', 'art_te', 'n_kaiako']
+  },
+
+  // ============================================================================
+  // MODULE 2: Kei te (Present Tense) - Feelings & Actions
+  // ============================================================================
+
+  // --- EASY: 3-card Feelings (everyday contexts!) ---
+  {
+    id: 'c_keite_i_good',
     type: 'build',
     difficulty: 'easy',
     instruction: 'Build: I am good',
@@ -253,7 +404,7 @@ export const SAMPLE_CHALLENGES: Challenge[] = [
     requiredCards: ['tm_keite', 'adj_pai', 'pr_au']
   },
   {
-    id: 'c_2_1_2',
+    id: 'c_keite_you_happy',
     type: 'build',
     difficulty: 'easy',
     instruction: 'Build: You are happy',
@@ -262,7 +413,137 @@ export const SAMPLE_CHALLENGES: Challenge[] = [
     requiredCards: ['tm_keite', 'adj_harikoa', 'pr_koe']
   },
   {
-    id: 'c_2_2_1',
+    id: 'c_keite_she_sad',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: He/she is sad',
+    target: { maori: 'Kei te pōuri ia', english: 'He/she is sad' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_pouri', 'pr_ia']
+  },
+  {
+    id: 'c_keite_i_tired',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am tired',
+    target: { maori: 'Kei te ngenge au', english: 'I am tired' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_ngenge', 'pr_au']
+  },
+  {
+    id: 'c_keite_you_angry',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: You are angry',
+    target: { maori: 'Kei te riri koe', english: 'You are angry' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_riri', 'pr_koe']
+  },
+  {
+    id: 'c_keite_i_well',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am well',
+    target: { maori: 'Kei te ora au', english: 'I am well' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_ora', 'pr_au']
+  },
+  {
+    id: 'c_keite_i_hungry',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am hungry',
+    target: { maori: 'Kei te matekai au', english: 'I am hungry' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_matekai', 'pr_au']
+  },
+  {
+    id: 'c_keite_you_thirsty',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: You are thirsty',
+    target: { maori: 'Kei te hiainu koe', english: 'You are thirsty' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_hiainu', 'pr_koe']
+  },
+  {
+    id: 'c_keite_i_sleepy',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am sleepy',
+    target: { maori: 'Kei te hiamoe au', english: 'I am sleepy' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_hiamoe', 'pr_au']
+  },
+  {
+    id: 'c_keite_she_sick',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: He/she is sick',
+    target: { maori: 'Kei te māuiui ia', english: 'He/she is sick' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_mauiui', 'pr_ia']
+  },
+
+  // --- EASY: 3-card Actions ---
+  {
+    id: 'c_keite_i_going',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am going',
+    target: { maori: 'Kei te haere au', english: 'I am going' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_haere', 'pr_au']
+  },
+  {
+    id: 'c_keite_i_eating',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am eating',
+    target: { maori: 'Kei te kai au', english: 'I am eating' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_kai', 'pr_au']
+  },
+  {
+    id: 'c_keite_she_running',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: He/she is running',
+    target: { maori: 'Kei te oma ia', english: 'He/she is running' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_oma', 'pr_ia']
+  },
+  {
+    id: 'c_keite_i_working',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am working',
+    target: { maori: 'Kei te mahi au', english: 'I am working' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_mahi', 'pr_au']
+  },
+  {
+    id: 'c_keite_i_learning',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: I am learning',
+    target: { maori: 'Kei te ako au', english: 'I am learning' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_ako', 'pr_au']
+  },
+  {
+    id: 'c_keite_she_resting',
+    type: 'build',
+    difficulty: 'easy',
+    instruction: 'Build: He/she is resting',
+    target: { maori: 'Kei te māhaki ia', english: 'He/she is resting' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_mahaki', 'pr_ia']
+  },
+
+  // --- MEDIUM: 4-card with Intensifiers ---
+  {
+    id: 'c_keite_i_very_good',
     type: 'build',
     difficulty: 'medium',
     instruction: 'Build: I am very good',
@@ -271,13 +552,136 @@ export const SAMPLE_CHALLENGES: Challenge[] = [
     requiredCards: ['tm_keite', 'int_tino', 'adj_pai', 'pr_au']
   },
   {
-    id: 'c_2_3_1',
+    id: 'c_keite_you_very_happy',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: You are very happy',
+    target: { maori: 'Kei te tino harikoa koe', english: 'You are very happy' },
+    pattern: ['Kei te', 'intensifier', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'int_tino', 'adj_harikoa', 'pr_koe']
+  },
+  {
+    id: 'c_keite_i_somewhat_tired',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: I am somewhat tired',
+    target: { maori: 'Kei te āhua ngenge au', english: 'I am somewhat tired' },
+    pattern: ['Kei te', 'intensifier', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'int_ahua', 'adj_ngenge', 'pr_au']
+  },
+  {
+    id: 'c_keite_she_very_sad',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: He/she is very sad',
+    target: { maori: 'Kei te tino pōuri ia', english: 'He/she is very sad' },
+    pattern: ['Kei te', 'intensifier', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'int_tino', 'adj_pouri', 'pr_ia']
+  },
+  {
+    id: 'c_keite_i_very_hungry',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: I am very hungry',
+    target: { maori: 'Kei te tino matekai au', english: 'I am very hungry' },
+    pattern: ['Kei te', 'intensifier', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'int_tino', 'adj_matekai', 'pr_au']
+  },
+  {
+    id: 'c_keite_you_somewhat_sick',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: You are somewhat sick',
+    target: { maori: 'Kei te āhua māuiui koe', english: 'You are somewhat sick' },
+    pattern: ['Kei te', 'intensifier', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'int_ahua', 'adj_mauiui', 'pr_koe']
+  },
+
+  // --- HARD: 5-card with Locations (ki = to) ---
+  {
+    id: 'c_keite_going_school',
+    type: 'build',
+    difficulty: 'hard',
+    instruction: 'Build: I am going to school',
+    target: { maori: 'Kei te haere au ki te kura', english: 'I am going to school' },
+    pattern: ['Kei te', 'verb', 'pronoun', 'locative', 'noun'],
+    requiredCards: ['tm_keite', 'v_haere', 'pr_au', 'pl_ki', 'n_kura']
+  },
+  {
+    id: 'c_keite_she_going_auckland',
+    type: 'build',
+    difficulty: 'hard',
+    instruction: 'Build: He/she is going to Auckland',
+    target: { maori: 'Kei te haere ia ki Tāmaki Makaurau', english: 'He/she is going to Auckland' },
+    pattern: ['Kei te', 'verb', 'pronoun', 'locative', 'noun'],
+    requiredCards: ['tm_keite', 'v_haere', 'pr_ia', 'pl_ki', 'n_tamaki']
+  },
+
+  // --- HARD: 5-card with Locations (i = at/in) ---
+  {
+    id: 'c_keite_living_auckland',
     type: 'build',
     difficulty: 'hard',
     instruction: 'Build: I am living in Auckland',
     target: { maori: 'Kei te noho au i Tāmaki Makaurau', english: 'I am living in Auckland' },
-    pattern: ['Kei te', 'verb', 'pronoun', 'locative', 'location'],
+    pattern: ['Kei te', 'verb', 'pronoun', 'locative', 'noun'],
     requiredCards: ['tm_keite', 'v_noho', 'pr_au', 'pl_i', 'n_tamaki']
+  },
+  {
+    id: 'c_keite_working_school',
+    type: 'build',
+    difficulty: 'hard',
+    instruction: 'Build: I am working at school',
+    target: { maori: 'Kei te mahi au i te kura', english: 'I am working at school' },
+    pattern: ['Kei te', 'verb', 'pronoun', 'locative', 'noun'],
+    requiredCards: ['tm_keite', 'v_mahi', 'pr_au', 'pl_i', 'n_kura']
+  },
+  {
+    id: 'c_keite_learning_school',
+    type: 'build',
+    difficulty: 'hard',
+    instruction: 'Build: I am learning at school',
+    target: { maori: 'Kei te ako au i te kura', english: 'I am learning at school' },
+    pattern: ['Kei te', 'verb', 'pronoun', 'locative', 'noun'],
+    requiredCards: ['tm_keite', 'v_ako', 'pr_au', 'pl_i', 'n_kura']
+  },
+
+  // --- MEDIUM: Plural pronouns ---
+  {
+    id: 'c_keite_we_eating',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: We are eating (all of us)',
+    target: { maori: 'Kei te kai tātou', english: 'We are eating (all of us)' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_kai', 'pr_tatou']
+  },
+  {
+    id: 'c_keite_they_going',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: They are going',
+    target: { maori: 'Kei te haere rātou', english: 'They are going' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_haere', 'pr_ratou']
+  },
+  {
+    id: 'c_keite_you_all_happy',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: You (all) are happy',
+    target: { maori: 'Kei te harikoa koutou', english: 'You (all) are happy' },
+    pattern: ['Kei te', 'adjective', 'pronoun'],
+    requiredCards: ['tm_keite', 'adj_harikoa', 'pr_koutou']
+  },
+  {
+    id: 'c_keite_we_learning',
+    type: 'build',
+    difficulty: 'medium',
+    instruction: 'Build: We are learning (not you)',
+    target: { maori: 'Kei te ako mātou', english: 'We are learning (not you)' },
+    pattern: ['Kei te', 'verb', 'pronoun'],
+    requiredCards: ['tm_keite', 'v_ako', 'pr_matou']
   }
 ];
 
