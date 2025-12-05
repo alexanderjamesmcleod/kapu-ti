@@ -254,13 +254,22 @@ export default function PlayPage() {
             <h1 className="text-4xl font-bold text-teal-800">
               Kapu Ti
             </h1>
-            <Link
-              href="/play/multiplayer"
-              className="px-3 py-1 bg-amber-500 text-white text-sm rounded-lg
-                       hover:bg-amber-600 transition-colors font-semibold"
-            >
-              Multiplayer
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/play/multiplayer"
+                className="px-3 py-1 bg-amber-500 text-white text-sm rounded-lg
+                         hover:bg-amber-600 transition-colors font-semibold"
+              >
+                Local
+              </Link>
+              <Link
+                href="/play/online"
+                className="px-3 py-1 bg-teal-600 text-white text-sm rounded-lg
+                         hover:bg-teal-700 transition-colors font-semibold"
+              >
+                Online
+              </Link>
+            </div>
           </div>
           <p className="text-gray-600">
             Build sentences, empty your hand, or make the tea!

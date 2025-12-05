@@ -1,0 +1,526 @@
+/**
+ * Server-side game logic for Kapu Ti online multiplayer
+ * Pure functions that can be tested and run on the server
+ */
+
+import type { Card } from '../src/types';
+import type {
+  Player,
+  TableSlot,
+  TurnState,
+  MultiplayerGame,
+  GameSettings,
+} from '../src/types/multiplayer.types';
+import {
+  DEFAULT_GAME_SETTINGS,
+  createInitialTurnState,
+} from '../src/types/multiplayer.types';
+
+// Import word library for card generation
+import { ALL_WORDS } from '../src/data/wordLibrary';
+
+// Convert word to card
+function wordToCard(word: typeof ALL_WORDS[0]): Card {
+  return {
+    id: word.id,
+    maori: word.maori,
+    english: word.english,
+    type: word.type,
+    color: word.color,
+  };
+}
+
+// Shuffle array using Fisher-Yates
+function shuffle<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// Generate unique ID
+export function generateId(): string {
+  return Math.random().toString(36).substring(2, 9);
+}
+
+// Generate room code (4 uppercase letters)
+export function generateRoomCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Exclude I and O to avoid confusion
+  let code = '';
+  for (let i = 0; i < 4; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+// Create initial table slots from pattern
+function createInitialSlots(pattern: string[]): TableSlot[] {
+  return pattern.map((color, index) => ({
+    id: generateId(),
+    color,
+    cards: [],
+    position: index,
+  }));
+}
+
+// Initialize a new game
+export function initializeGame(
+  playerIds: string[],
+  playerNames: string[],
+  settings: GameSettings = DEFAULT_GAME_SETTINGS
+): MultiplayerGame {
+  // Create all cards and shuffle
+  const allCards = shuffle(ALL_WORDS.map(wordToCard));
+
+  // Create players and deal cards
+  const players: Player[] = playerIds.map((id, index) => ({
+    id,
+    name: playerNames[index],
+    hand: allCards.splice(0, settings.cardsPerPlayer),
+    isActive: true,
+    position: index,
+  }));
+
+  // Remaining cards go to draw pile
+  const drawPile = allCards;
+
+  // Create starting table slots
+  const tableSlots = createInitialSlots(settings.startingPattern);
+
+  return {
+    id: generateId(),
+    players,
+    currentPlayerIndex: 0,
+    tableSlots,
+    drawPile,
+    discardPile: [],
+    startingPattern: settings.startingPattern,
+    phase: 'playing',
+    turnState: createInitialTurnState(),
+    verificationVotes: [],
+    winnersInOrder: [],
+    loserId: null,
+  };
+}
+
+// Find next active player
+function findNextActivePlayer(players: Player[], currentIdx: number): number {
+  let nextIdx = (currentIdx + 1) % players.length;
+  let iterations = 0;
+  while (!players[nextIdx].isActive && iterations < players.length) {
+    nextIdx = (nextIdx + 1) % players.length;
+    iterations++;
+  }
+  return nextIdx;
+}
+
+// Play a card on a slot
+export function playCard(
+  game: MultiplayerGame,
+  playerId: string,
+  cardId: string,
+  slotId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1) {
+    return { success: false, game, error: 'Player not found' };
+  }
+
+  if (playerIndex !== game.currentPlayerIndex) {
+    return { success: false, game, error: 'Not your turn' };
+  }
+
+  const player = game.players[playerIndex];
+  const card = player.hand.find(c => c.id === cardId);
+  const slot = game.tableSlots.find(s => s.id === slotId);
+
+  if (!card) {
+    return { success: false, game, error: 'Card not in hand' };
+  }
+
+  if (!slot) {
+    return { success: false, game, error: 'Slot not found' };
+  }
+
+  if (card.color !== slot.color) {
+    return { success: false, game, error: 'Card color does not match slot' };
+  }
+
+  if (game.turnState.colorsPlayedThisTurn.has(card.color)) {
+    return { success: false, game, error: 'Already played this color this turn' };
+  }
+
+  // Update game state
+  const newPlayers = [...game.players];
+  const newHand = player.hand.filter(c => c.id !== cardId);
+  newPlayers[playerIndex] = { ...player, hand: newHand };
+
+  const newSlots = game.tableSlots.map(s =>
+    s.id === slotId
+      ? { ...s, cards: [...s.cards, card] }
+      : s
+  );
+
+  const newColorsPlayed = new Set(game.turnState.colorsPlayedThisTurn);
+  newColorsPlayed.add(card.color);
+
+  const newGame: MultiplayerGame = {
+    ...game,
+    players: newPlayers,
+    tableSlots: newSlots,
+    turnState: {
+      ...game.turnState,
+      playedCards: [...game.turnState.playedCards, { card, slotId }],
+      colorsPlayedThisTurn: newColorsPlayed,
+    },
+  };
+
+  return { success: true, game: newGame };
+}
+
+// Create a new slot with a card
+export function createSlot(
+  game: MultiplayerGame,
+  playerId: string,
+  cardId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1) {
+    return { success: false, game, error: 'Player not found' };
+  }
+
+  if (playerIndex !== game.currentPlayerIndex) {
+    return { success: false, game, error: 'Not your turn' };
+  }
+
+  const player = game.players[playerIndex];
+  const card = player.hand.find(c => c.id === cardId);
+
+  if (!card) {
+    return { success: false, game, error: 'Card not in hand' };
+  }
+
+  if (game.turnState.colorsPlayedThisTurn.has(card.color)) {
+    return { success: false, game, error: 'Already played this color this turn' };
+  }
+
+  // Update game state
+  const newPlayers = [...game.players];
+  const newHand = player.hand.filter(c => c.id !== cardId);
+  newPlayers[playerIndex] = { ...player, hand: newHand };
+
+  // Create new slot at the end
+  const newSlot: TableSlot = {
+    id: generateId(),
+    color: card.color,
+    cards: [card],
+    position: game.tableSlots.length,
+  };
+
+  const newColorsPlayed = new Set(game.turnState.colorsPlayedThisTurn);
+  newColorsPlayed.add(card.color);
+
+  const newGame: MultiplayerGame = {
+    ...game,
+    players: newPlayers,
+    tableSlots: [...game.tableSlots, newSlot],
+    turnState: {
+      ...game.turnState,
+      playedCards: [...game.turnState.playedCards, { card, slotId: newSlot.id }],
+      colorsPlayedThisTurn: newColorsPlayed,
+    },
+  };
+
+  return { success: true, game: newGame };
+}
+
+// Submit turn for verification
+export function submitTurn(
+  game: MultiplayerGame,
+  playerId: string,
+  spoken: string,
+  translation: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1 || playerIndex !== game.currentPlayerIndex) {
+    return { success: false, game, error: 'Not your turn' };
+  }
+
+  const newGame: MultiplayerGame = {
+    ...game,
+    phase: 'verification',
+    turnState: {
+      ...game.turnState,
+      awaitingVerification: true,
+      spokenSentence: spoken,
+      translation,
+    },
+    verificationVotes: [],
+  };
+
+  return { success: true, game: newGame };
+}
+
+// Handle successful turn
+function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
+  const currentPlayerIdx = game.currentPlayerIndex;
+  const player = game.players[currentPlayerIdx];
+
+  // Check if player emptied their hand
+  if (player.hand.length === 0) {
+    const newPlayers = [...game.players];
+    newPlayers[currentPlayerIdx] = { ...player, isActive: false };
+
+    const newWinners = [...game.winnersInOrder, player.id];
+
+    // Check if game is over (only 1 active player left)
+    const remainingActive = newPlayers.filter(p => p.isActive);
+
+    if (remainingActive.length === 1) {
+      return {
+        ...game,
+        players: newPlayers,
+        winnersInOrder: newWinners,
+        loserId: remainingActive[0].id,
+        phase: 'finished',
+        turnState: createInitialTurnState(),
+      };
+    }
+
+    // Move to next active player
+    return {
+      ...game,
+      players: newPlayers,
+      winnersInOrder: newWinners,
+      currentPlayerIndex: findNextActivePlayer(newPlayers, currentPlayerIdx),
+      phase: 'turnEnd',
+      turnState: createInitialTurnState(),
+    };
+  }
+
+  // Player draws 1 card
+  const newDrawPile = [...game.drawPile];
+  const drawnCard = newDrawPile.shift();
+
+  const newPlayers = [...game.players];
+  if (drawnCard) {
+    newPlayers[currentPlayerIdx] = {
+      ...player,
+      hand: [...player.hand, drawnCard],
+    };
+  }
+
+  return {
+    ...game,
+    players: newPlayers,
+    drawPile: newDrawPile,
+    currentPlayerIndex: findNextActivePlayer(game.players, currentPlayerIdx),
+    phase: 'turnEnd',
+    turnState: createInitialTurnState(),
+    verificationVotes: [],
+  };
+}
+
+// Handle failed verification (pickup all cards!)
+function handleTurnFailure(game: MultiplayerGame): MultiplayerGame {
+  const currentPlayerIdx = game.currentPlayerIndex;
+  const player = game.players[currentPlayerIdx];
+
+  // Collect ALL cards from table
+  const tableCards = game.tableSlots.flatMap(slot => slot.cards);
+
+  // Add to player's hand
+  const newPlayers = [...game.players];
+  newPlayers[currentPlayerIdx] = {
+    ...player,
+    hand: [...player.hand, ...tableCards],
+  };
+
+  // Reset table to starting pattern
+  const newSlots = createInitialSlots(game.startingPattern);
+
+  return {
+    ...game,
+    players: newPlayers,
+    tableSlots: newSlots,
+    currentPlayerIndex: findNextActivePlayer(game.players, currentPlayerIdx),
+    phase: 'turnEnd',
+    turnState: createInitialTurnState(),
+    verificationVotes: [],
+  };
+}
+
+// Vote on verification
+export function vote(
+  game: MultiplayerGame,
+  playerId: string,
+  approved: boolean
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  if (game.phase !== 'verification') {
+    return { success: false, game, error: 'Not in verification phase' };
+  }
+
+  // Check if this player already voted
+  if (game.verificationVotes.some(v => v.playerId === playerId)) {
+    return { success: false, game, error: 'Already voted' };
+  }
+
+  const newVotes = [...game.verificationVotes, { playerId, approved }];
+
+  // Check if all other active players have voted
+  const currentPlayerId = game.players[game.currentPlayerIndex].id;
+  const otherActivePlayers = game.players.filter(
+    p => p.isActive && p.id !== currentPlayerId
+  );
+
+  if (newVotes.length >= otherActivePlayers.length) {
+    // Tally votes
+    const approvedCount = newVotes.filter(v => v.approved).length;
+    const isApproved = approvedCount > newVotes.length / 2;
+
+    if (isApproved) {
+      return { success: true, game: handleTurnSuccess({ ...game, verificationVotes: newVotes }) };
+    } else {
+      return { success: true, game: handleTurnFailure({ ...game, verificationVotes: newVotes }) };
+    }
+  }
+
+  return { success: true, game: { ...game, verificationVotes: newVotes } };
+}
+
+// Pass turn (draw 1 card, don't play)
+export function passTurn(
+  game: MultiplayerGame,
+  playerId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1 || playerIndex !== game.currentPlayerIndex) {
+    return { success: false, game, error: 'Not your turn' };
+  }
+
+  const newDrawPile = [...game.drawPile];
+  const drawnCard = newDrawPile.shift();
+
+  const newPlayers = [...game.players];
+  if (drawnCard) {
+    newPlayers[playerIndex] = {
+      ...game.players[playerIndex],
+      hand: [...game.players[playerIndex].hand, drawnCard],
+    };
+  }
+
+  const newGame: MultiplayerGame = {
+    ...game,
+    players: newPlayers,
+    drawPile: newDrawPile,
+    currentPlayerIndex: findNextActivePlayer(game.players, playerIndex),
+    phase: 'turnEnd',
+    turnState: createInitialTurnState(),
+  };
+
+  return { success: true, game: newGame };
+}
+
+// Confirm turn end (privacy screen acknowledged)
+export function confirmTurnEnd(
+  game: MultiplayerGame
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  if (game.phase !== 'turnEnd') {
+    return { success: false, game, error: 'Not in turn end phase' };
+  }
+
+  return { success: true, game: { ...game, phase: 'playing' } };
+}
+
+// Undo last played card this turn
+export function undoLastCard(
+  game: MultiplayerGame,
+  playerId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1 || playerIndex !== game.currentPlayerIndex) {
+    return { success: false, game, error: 'Not your turn' };
+  }
+
+  if (game.turnState.playedCards.length === 0) {
+    return { success: false, game, error: 'No cards to undo' };
+  }
+
+  const lastPlayed = game.turnState.playedCards[game.turnState.playedCards.length - 1];
+  const { card, slotId } = lastPlayed;
+
+  // Return card to player's hand
+  const newPlayers = [...game.players];
+  newPlayers[playerIndex] = {
+    ...newPlayers[playerIndex],
+    hand: [...newPlayers[playerIndex].hand, card],
+  };
+
+  // Remove card from slot
+  let newSlots = game.tableSlots.map(s => {
+    if (s.id === slotId) {
+      const newCards = [...s.cards];
+      newCards.pop();
+      return { ...s, cards: newCards };
+    }
+    return s;
+  });
+
+  // Remove empty slots (except starting pattern)
+  if (newSlots.length > game.startingPattern.length) {
+    newSlots = newSlots.filter(s => s.cards.length > 0 || s.position < game.startingPattern.length);
+  }
+
+  // Remove color from played colors
+  const newColorsPlayed = new Set(game.turnState.colorsPlayedThisTurn);
+  newColorsPlayed.delete(card.color);
+
+  const newGame: MultiplayerGame = {
+    ...game,
+    players: newPlayers,
+    tableSlots: newSlots,
+    turnState: {
+      ...game.turnState,
+      playedCards: game.turnState.playedCards.slice(0, -1),
+      colorsPlayedThisTurn: newColorsPlayed,
+    },
+  };
+
+  return { success: true, game: newGame };
+}
+
+// Get current sentence from table slots
+export function getSentenceFromSlots(slots: TableSlot[]): string {
+  return slots
+    .sort((a, b) => a.position - b.position)
+    .map(slot => slot.cards[slot.cards.length - 1]?.maori || '')
+    .filter(Boolean)
+    .join(' ');
+}
+
+// Sanitize game state for a specific player (hide other players' hands)
+export function sanitizeGameForPlayer(game: MultiplayerGame, playerId: string): MultiplayerGame {
+  return {
+    ...game,
+    players: game.players.map(p => ({
+      ...p,
+      // Only show this player's full hand, others just show count
+      hand: p.id === playerId ? p.hand : p.hand.map(() => ({ id: 'hidden', maori: '?', english: '?', type: '?', color: 'gray' })),
+    })),
+    // Don't reveal draw pile
+    drawPile: [],
+  };
+}
+
+// Serialize game state for JSON transmission (convert Set to Array)
+export function serializeGameForWire(game: MultiplayerGame): object {
+  return {
+    ...game,
+    turnState: {
+      ...game.turnState,
+      colorsPlayedThisTurn: Array.from(game.turnState.colorsPlayedThisTurn),
+    },
+  };
+}

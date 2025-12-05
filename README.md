@@ -34,6 +34,41 @@ npm run dev
 npm run build
 ```
 
+## Online Multiplayer
+
+Play with friends over the internet using WebSocket-based real-time gameplay!
+
+### Running Online Mode
+
+```bash
+# Terminal 1: Start WebSocket server
+npm run server
+
+# Terminal 2: Start Next.js app
+npm run dev
+```
+
+### How to Play Online
+
+1. Go to `/play` → Click "Online"
+2. **Create Room**: Enter your name → Click "Create New Room" → Share 4-letter code
+3. **Join Room**: Enter your name → Enter code → Click "Join"
+4. All players mark "Ready" → Host clicks "Start Game"
+
+### External Access (tunnelmole/ngrok)
+
+To play with friends outside your network:
+
+```bash
+# Expose WebSocket server
+tmole 3002
+
+# Expose web app
+tmole 3001
+```
+
+Update the server URL in the lobby to your tunnel URL (e.g., `wss://xxxx.tunnelmole.net`)
+
 ## Game Rules
 
 1. Each player gets 7 color-coded word cards
@@ -71,12 +106,18 @@ npm run build
 ## Project Structure
 
 ```
-src/
-├── app/           # Next.js pages
-├── components/    # React components (Card, CardHand, SentenceBuilder)
-├── lib/           # Validators and audio utilities
-├── data/          # Vocabulary and curriculum
-└── types/         # TypeScript interfaces
+├── src/
+│   ├── app/           # Next.js pages
+│   ├── components/    # React components (Card, CardHand, SentenceBuilder)
+│   ├── hooks/         # React hooks (useMultiplayerGame, useOnlineGame)
+│   ├── lib/           # Validators and audio utilities
+│   ├── data/          # Vocabulary and curriculum
+│   └── types/         # TypeScript interfaces
+└── server/
+    ├── index.ts       # WebSocket server entry point
+    ├── game-manager.ts # Room and player management
+    ├── game-logic.ts  # Pure game functions
+    └── types.ts       # Server message types
 ```
 
 ## Roadmap
@@ -87,11 +128,12 @@ src/
 - [x] 50 progressive challenges (Module 1 & 2)
 - [x] Draw pile mechanic with solvable challenges
 - [x] Pass-and-play multiplayer (2-4 players)
-- [ ] Online multiplayer (WebSocket - self-hosted)
+- [x] Online multiplayer (WebSocket - self-hosted)
 - [ ] Print-ready card PDF export
 - [ ] Speech-to-text validation
 - [ ] NZSL video integration
 - [ ] Mobile app (PWA)
+- [ ] Deploy to Vercel (with separate WebSocket host)
 
 ## Cultural Values
 
