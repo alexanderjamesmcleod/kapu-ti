@@ -83,10 +83,13 @@ src/
 
 - [x] Core game mechanics
 - [x] Audio pronunciation integration
-- [x] Grammar validation
-- [ ] Pass-and-play multiplayer
+- [x] Grammar validation (Ko, He, Kei te)
+- [x] 50 progressive challenges (Module 1 & 2)
+- [x] Draw pile mechanic with solvable challenges
+- [x] Pass-and-play multiplayer (2-4 players)
+- [ ] Online multiplayer (WebSocket - self-hosted)
 - [ ] Print-ready card PDF export
-- [ ] Online multiplayer
+- [ ] Speech-to-text validation
 - [ ] NZSL video integration
 - [ ] Mobile app (PWA)
 
