@@ -9,3 +9,6 @@ export * from './wordLibrary';
 
 // Curriculum
 export * from './curriculum';
+
+// Topics & Sentence Generation
+export * from './topics';

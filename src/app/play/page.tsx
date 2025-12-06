@@ -256,6 +256,13 @@ export default function PlayPage() {
             </h1>
             <div className="flex gap-2">
               <Link
+                href="/play/topic"
+                className="px-3 py-1 bg-purple-500 text-white text-sm rounded-lg
+                         hover:bg-purple-600 transition-colors font-semibold"
+              >
+                Topic
+              </Link>
+              <Link
                 href="/play/multiplayer"
                 className="px-3 py-1 bg-amber-500 text-white text-sm rounded-lg
                          hover:bg-amber-600 transition-colors font-semibold"
