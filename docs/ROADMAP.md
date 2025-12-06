@@ -14,7 +14,7 @@ The game should feel like sitting at a real table, face-to-face, playing cards w
 
 ### 1. Topic-Based Sentence Generation
 
-**Status:** Next up
+**Status:** COMPLETE
 
 **Concept:**
 - Player 1 picks a random word or topic at the start of the game
@@ -40,7 +40,7 @@ Round 4 (morph): "Kei te tino matekai au" → "I am very hungry"
 
 ### 2. Turn Order via Māori Number Cards
 
-**Status:** Planned
+**Status:** COMPLETE
 
 **Concept:**
 - At game start, each player is dealt a numbered card (tahi, rua, toru, whā, rima...)
@@ -91,7 +91,7 @@ Round 4 (morph): "Kei te tino matekai au" → "I am very hungry"
 
 ### 4. Live Video at the Table
 
-**Status:** Future (v2.0)
+**Status:** IN PROGRESS (UI ready, WebRTC pending)
 
 **Concept:**
 - See and talk to other players while playing
@@ -130,10 +130,35 @@ Round 4 (morph): "Kei te tino matekai au" → "I am very hungry"
 
 ## Implementation Priority
 
-1. **Topic-based sentences** ← Foundation for dynamic gameplay
-2. **Māori number turn order** ← Simple, teaches numbers
-3. **Unlimited players** ← Scale up
-4. **Live video** ← Full social experience
+1. ~~**Topic-based sentences**~~ DONE - 6 topics, sentence morphing, auto-distractors
+2. ~~**Māori number turn order**~~ DONE - Full flow: deal → reveal → crown winner → pick topic
+3. **Unlimited players** ← Next: Scale up with dynamic card pools
+4. **Live video** ← IN PROGRESS: UI ready, needs WebRTC
+
+## What's Been Built
+
+### Multiplayer Room System (`/play/room`)
+- Create/Join/Browse rooms with 4-letter codes
+- Spectate mode with queue to join next game
+- Lobby with ready-up system
+
+### Turn Order Flow
+- Māori numbers 1-20 as flip cards
+- Tap to reveal animation
+- Crown for highest card holder
+- Winner picks the topic
+
+### Poker Table UI (`GameTable` component)
+- Oval felt table with players positioned around
+- Current turn glow effect
+- Video feed placeholders with toggle button
+- Spectator view
+
+### Topic System (`/play/topic`)
+- 6 topics: Food, Feelings, Actions, Animals, People, Places
+- Sentence morphing (he_simple → keite_state → keite_intensified)
+- Distractor cards for challenge
+- Auto-validation when slots filled
 
 ---
 

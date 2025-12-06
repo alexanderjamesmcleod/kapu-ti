@@ -7,6 +7,7 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { GameManager } from './game-manager';
 import type { ClientMessage, ServerMessage } from './types';
+import type { MultiplayerGame } from '../src/types/multiplayer.types';
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
 const gameManager = new GameManager();
@@ -40,14 +41,14 @@ function broadcast(roomCode: string, message: ServerMessage, excludeSocket?: str
 }
 
 // Send game state to all players in room (each player gets their sanitized view)
-function broadcastGameState(roomCode: string, game: import('../src/types/multiplayer.types').MultiplayerGame): void {
+function broadcastGameState(roomCode: string, game: MultiplayerGame): void {
   const sockets = gameManager.getSocketsInRoom(roomCode);
   for (const socketId of sockets) {
     const ws = connections.get(socketId);
     const playerId = gameManager.getPlayerIdBySocket(socketId);
     if (ws && playerId) {
       const sanitizedGame = gameManager.getGameForPlayer(game, playerId);
-      send(ws, { type: 'GAME_STATE', game: sanitizedGame });
+      send(ws, { type: 'GAME_STATE', game: sanitizedGame as MultiplayerGame });
     }
   }
 }
@@ -138,7 +139,7 @@ wss.on('connection', (ws: WebSocket) => {
                 const sanitizedGame = gameManager.getGameForPlayer(result.game, player.id);
                 send(playerWs, {
                   type: 'GAME_STARTED',
-                  game: sanitizedGame,
+                  game: sanitizedGame as MultiplayerGame,
                   yourPlayerId: player.id,
                 });
               }

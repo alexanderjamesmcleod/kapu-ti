@@ -3,3 +3,4 @@ export { CardHand } from './CardHand';
 export { SentenceBuilder } from './SentenceBuilder';
 export { TopicSelector } from './TopicSelector';
 export { NumberCard } from './NumberCard';
+export { GameTable } from './GameTable';

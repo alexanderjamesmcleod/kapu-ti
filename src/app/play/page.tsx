@@ -260,7 +260,7 @@ export default function PlayPage() {
                 className="px-3 py-1 bg-purple-500 text-white text-sm rounded-lg
                          hover:bg-purple-600 transition-colors font-semibold"
               >
-                Topic
+                Solo
               </Link>
               <Link
                 href="/play/multiplayer"
@@ -270,7 +270,7 @@ export default function PlayPage() {
                 Local
               </Link>
               <Link
-                href="/play/online"
+                href="/play/room"
                 className="px-3 py-1 bg-teal-600 text-white text-sm rounded-lg
                          hover:bg-teal-700 transition-colors font-semibold"
               >
