@@ -216,19 +216,8 @@ export function GameTable({
         <div className="absolute inset-4 rounded-[50%] bg-gradient-to-br from-teal-600 to-teal-800
                        border-4 border-teal-700/50">
 
-          {/* Topic indicator */}
-          {currentTopic && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2">
-              <div className="px-4 py-2 bg-white/90 rounded-full shadow-md">
-                <span className="text-lg">{currentTopic.icon}</span>
-                <span className="ml-2 font-bold text-teal-800">{currentTopic.name}</span>
-                <span className="ml-1 text-sm text-teal-600">({currentTopic.maori})</span>
-              </div>
-            </div>
-          )}
-
-          {/* Center content (sentence builder) */}
-          <div className="absolute inset-0 flex items-center justify-center p-8">
+          {/* Center content (sentence builder) + Topic below */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
             <div className="bg-teal-900/30 rounded-xl p-4 backdrop-blur-sm">
               {centerContent || (
                 <p className="text-white/60 text-center">
@@ -236,6 +225,17 @@ export function GameTable({
                 </p>
               )}
             </div>
+
+            {/* Topic indicator - below sentence builder */}
+            {currentTopic && (
+              <div className="mt-3">
+                <div className="px-4 py-2 bg-white/90 rounded-full shadow-md">
+                  <span className="text-lg">{currentTopic.icon}</span>
+                  <span className="ml-2 font-bold text-teal-800">{currentTopic.name}</span>
+                  <span className="ml-1 text-sm text-teal-600">({currentTopic.maori})</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -245,7 +245,7 @@ export function GameTable({
         <PlayerSeat
           key={player.id}
           player={player}
-          position={getPlayerPosition(index, players.length, false)}
+          position={getPlayerPosition(index, maxPlayers, false)}
           seatIndex={index}
         />
       ))}

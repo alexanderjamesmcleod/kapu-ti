@@ -2,10 +2,11 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import { GameTable, CardHand, NumberCard, TopicSelector } from '@/components';
+import { GameTable, CardHand, NumberCard, TopicSelector, MultiplayerSentenceBuilder } from '@/components';
 import type { TablePlayer } from '@/components/GameTable';
 import type { Card as CardType } from '@/types';
 import { dealTurnOrderCards, getPlayerOrder, TOPICS, type Topic, type NumberCard as NumberCardType } from '@/data';
+import { useOnlineGame } from '@/hooks/useOnlineGame';
 
 type RoomPhase = 'menu' | 'create' | 'join' | 'browse' | 'lobby' | 'turn_order' | 'pick_topic' | 'spectate' | 'playing';
 
@@ -91,7 +92,7 @@ export default function RoomPage() {
   const [playerAvatar, setPlayerAvatar] = useState(AVATARS[0]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [isHost, setIsHost] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(true); // Auto-ready
   const [roomCode, setRoomCode] = useState('');
   const [spectatorCount, setSpectatorCount] = useState(3);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
@@ -106,70 +107,140 @@ export default function RoomPage() {
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const [hand, setHand] = useState<CardType[]>(DEMO_HAND);
 
+  // Online game hook
+  const online = useOnlineGame();
+
+  // Connect to WebSocket when entering menu (for real multiplayer)
+  useEffect(() => {
+    if (phase === 'menu' && online.connectionState === 'disconnected') {
+      online.connect();
+    }
+  }, [phase, online.connectionState, online.connect]);
+
+  // When game starts (lobbyState becomes 'inGame'), transition to turn_order phase
+  // This handles the case for joining players who don't click the "Start Game" button
+  useEffect(() => {
+    if (online.lobbyState === 'inGame' && online.game && phase === 'lobby') {
+      // Non-host player received GAME_STARTED - deal them turn order cards
+      const cards = dealTurnOrderCards(online.game.players.length);
+      setPlayers(prev => {
+        // Use online.game.players to ensure we have all players
+        const gamePlayers = online.game!.players;
+        return gamePlayers.map((p, index) => ({
+          id: p.id,
+          name: p.name,
+          avatar: AVATARS[Math.abs(p.name.charCodeAt(0)) % AVATARS.length],
+          isHost: index === 0,
+          isReady: true,
+          turnOrderCard: cards[index],
+          hasRevealed: false,
+        }));
+      });
+      setTurnOrderRevealed(false);
+      setPhase('turn_order');
+    }
+  }, [online.lobbyState, online.game, phase]);
+
+  // Sync game state - go to 'playing' after topic is selected
+  useEffect(() => {
+    if (online.lobbyState === 'inGame' && online.game && selectedTopic) {
+      setPhase('playing');
+    }
+  }, [online.lobbyState, online.game, selectedTopic]);
+
+  // Sync online players to local state for lobby display
+  // BUT preserve turnOrderCard and hasRevealed during turn_order phase
+  useEffect(() => {
+    if (online.players.length > 0) {
+      setPlayers(prev => {
+        // If in turn_order or pick_topic phase, preserve local turn order state
+        if (phase === 'turn_order' || phase === 'pick_topic') {
+          return online.players.map(p => {
+            const existing = prev.find(ep => ep.id === p.id);
+            return {
+              id: p.id,
+              name: p.name,
+              avatar: AVATARS[Math.abs(p.name.charCodeAt(0)) % AVATARS.length],
+              isHost: p.isHost,
+              isReady: p.isReady,
+              turnOrderCard: existing?.turnOrderCard,
+              hasRevealed: existing?.hasRevealed ?? false,
+            };
+          });
+        }
+        // Otherwise just sync from server
+        return online.players.map(p => ({
+          id: p.id,
+          name: p.name,
+          avatar: AVATARS[Math.abs(p.name.charCodeAt(0)) % AVATARS.length],
+          isHost: p.isHost,
+          isReady: p.isReady,
+        }));
+      });
+    }
+  }, [online.players, phase]);
+
+  // Sync room code from online state
+  useEffect(() => {
+    if (online.roomCode) {
+      setRoomCode(online.roomCode);
+    }
+  }, [online.roomCode]);
+
+  // Sync isHost from online state
+  useEffect(() => {
+    setIsHost(online.isHost);
+  }, [online.isHost]);
+
   // Create room
   const handleCreateRoom = useCallback(() => {
-    const code = generateRoomCode();
-    setRoomCode(code);
-    setIsHost(true);
-    setPlayers([{
-      id: 'self',
-      name: playerName,
-      avatar: playerAvatar,
-      isHost: true,
-      isReady: false
-    }]);
+    // Use online hook for real WebSocket connection
+    online.createRoom(playerName);
+    // State will be synced from online via useEffects
+    setIsReady(true); // Host starts ready
     setPhase('lobby');
-  }, [playerName, playerAvatar]);
+  }, [playerName, online]);
 
   // Join room
   const handleJoinRoom = useCallback((code: string, asSpectator: boolean = false) => {
-    setRoomCode(code.toUpperCase());
-
     if (asSpectator) {
+      setRoomCode(code.toUpperCase());
       setPhase('spectate');
       return;
     }
 
-    setIsHost(false);
-    setPlayers([
-      { id: 'host', name: 'Hemi', avatar: '👨', isHost: true, isReady: true },
-      { id: 'self', name: playerName, avatar: playerAvatar, isHost: false, isReady: false }
-    ]);
+    // Use online hook for real WebSocket connection
+    online.joinRoom(code, playerName);
+    // State will be synced from online via useEffects
     setPhase('lobby');
-  }, [playerName, playerAvatar]);
+  }, [playerName, online]);
 
   // Join queue (spectator wants to play next round)
   const handleJoinQueue = useCallback(() => {
     setQueuePosition(spectatorCount + 1);
   }, [spectatorCount]);
 
-  // Add bot player (demo)
+  // Add bot player via WebSocket
   const addBotPlayer = useCallback(() => {
-    const botNames = ['Aroha', 'Tāne', 'Maia', 'Kahu', 'Ngaio', 'Wiremu'];
-    const available = botNames.filter(n => !players.some(p => p.name === n));
-    if (available.length === 0 || players.length >= settings.maxPlayers) return;
-
-    const newPlayer: Player = {
-      id: `bot-${Date.now()}`,
-      name: available[Math.floor(Math.random() * available.length)],
-      avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
-      isHost: false,
-      isReady: Math.random() > 0.3
-    };
-    setPlayers(prev => [...prev, newPlayer]);
-  }, [players, settings.maxPlayers]);
+    if (players.length >= settings.maxPlayers) return;
+    // Call server to add bot - it will broadcast PLAYER_JOINED
+    online.addBot();
+  }, [players.length, settings.maxPlayers, online]);
 
   // Toggle ready
   const toggleReady = useCallback(() => {
-    setIsReady(prev => !prev);
-    setPlayers(prev => prev.map(p =>
-      p.id === 'self' ? { ...p, isReady: !p.isReady } : p
-    ));
-  }, []);
+    const newReady = !isReady;
+    online.setReady(newReady);
+    setIsReady(newReady);
+    // Player list will be synced from online.players
+  }, [isReady, online]);
 
   // Start game - deal turn order cards
   const startGame = useCallback(() => {
-    // Deal number cards to all players
+    // Also trigger the online game start (skips turn order for now, goes straight to game)
+    online.startGame();
+
+    // Deal number cards to all players (for local turn order animation)
     const cards = dealTurnOrderCards(players.length);
     setPlayers(prev => prev.map((player, index) => ({
       ...player,
@@ -178,7 +249,7 @@ export default function RoomPage() {
     })));
     setTurnOrderRevealed(false);
     setPhase('turn_order');
-  }, [players.length]);
+  }, [players.length, online]);
 
   // Handle player revealing their card
   const handleRevealCard = useCallback((playerId: string) => {
@@ -223,7 +294,7 @@ export default function RoomPage() {
   // Simulate bots revealing their cards
   useEffect(() => {
     if (phase === 'turn_order') {
-      const botPlayers = players.filter(p => p.id !== 'self' && !p.hasRevealed);
+      const botPlayers = players.filter(p => !isSelf(p.id) && !p.hasRevealed);
       botPlayers.forEach((bot, index) => {
         // Stagger reveals
         setTimeout(() => {
@@ -235,7 +306,7 @@ export default function RoomPage() {
 
   // Simulate bot selecting topic
   useEffect(() => {
-    if (phase === 'pick_topic' && topicPicker && topicPicker.id !== 'self' && !selectedTopic) {
+    if (phase === 'pick_topic' && topicPicker && !isSelf(topicPicker.id) && !selectedTopic) {
       const timer = setTimeout(() => {
         const randomTopic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
         handleSelectTopic(randomTopic);
@@ -244,7 +315,10 @@ export default function RoomPage() {
     }
   }, [phase, topicPicker, selectedTopic, handleSelectTopic]);
 
-  const canStart = isHost && players.every(p => p.isReady) && players.length >= 2;
+  // Helper to check if a player is self
+  const isSelf = (playerId: string) => playerId === online.playerId;
+
+  const canStart = isHost && players.length >= 2;
 
   // Spectator view content
   const spectatorCenterContent = (
@@ -507,17 +581,17 @@ export default function RoomPage() {
               </div>
               <div className="space-y-2">
                 {players.map(player => (
-                  <div key={player.id} className={`flex items-center gap-3 p-2 rounded-lg ${player.id === 'self' ? 'bg-teal-50' : 'bg-gray-50'}`}>
+                  <div key={player.id} className={`flex items-center gap-3 p-2 rounded-lg ${isSelf(player.id) ? 'bg-teal-50' : 'bg-gray-50'}`}>
                     <div className="w-10 h-10 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center text-xl">{player.avatar}</div>
                     <div className="flex-1">
                       <p className="font-semibold text-gray-800">
                         {player.name}
                         {player.isHost && <span className="ml-1">👑</span>}
-                        {player.id === 'self' && <span className="text-sm text-teal-600 ml-1">(You)</span>}
+                        {isSelf(player.id) && <span className="text-sm text-teal-600 ml-1">(You)</span>}
                       </p>
                     </div>
-                    <div className={`px-2 py-1 rounded-full text-sm font-semibold ${player.isReady ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>
-                      {player.isReady ? 'Ready' : 'Waiting'}
+                    <div className="px-2 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                      Ready ✓
                     </div>
                   </div>
                 ))}
@@ -532,14 +606,7 @@ export default function RoomPage() {
 
             <div className="flex gap-3">
               <button onClick={() => setPhase('menu')} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300">Leave</button>
-              {!isHost ? (
-                <button
-                  onClick={toggleReady}
-                  className={`flex-1 py-3 rounded-xl font-bold transition-colors ${isReady ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
-                >
-                  {isReady ? '✓ Ready!' : 'Ready Up'}
-                </button>
-              ) : (
+              {isHost && (
                 <button
                   onClick={startGame}
                   disabled={!canStart}
@@ -577,9 +644,9 @@ export default function RoomPage() {
                                   }`}>
                     {player.avatar}
                   </div>
-                  <span className={`text-sm font-semibold ${player.id === 'self' ? 'text-teal-600' : 'text-gray-700'}`}>
+                  <span className={`text-sm font-semibold ${isSelf(player.id) ? 'text-teal-600' : 'text-gray-700'}`}>
                     {player.name}
-                    {player.id === 'self' && ' (You)'}
+                    {isSelf(player.id) && ' (You)'}
                   </span>
 
                   {/* Number card */}
@@ -589,8 +656,8 @@ export default function RoomPage() {
                       size="md"
                       revealed={player.hasRevealed}
                       isHighest={turnOrderRevealed && playerOrder[0] === index}
-                      onClick={player.id === 'self' && !player.hasRevealed
-                        ? () => handleRevealCard('self')
+                      onClick={isSelf(player.id) && !player.hasRevealed
+                        ? () => handleRevealCard(player.id)
                         : undefined
                       }
                     />
@@ -601,7 +668,7 @@ export default function RoomPage() {
 
             {/* Status message */}
             <div className="text-center">
-              {!players.find(p => p.id === 'self')?.hasRevealed ? (
+              {!players.find(p => isSelf(p.id))?.hasRevealed ? (
                 <p className="text-lg font-semibold text-amber-600 animate-pulse">
                   👆 Tap your card to reveal!
                 </p>
@@ -624,14 +691,14 @@ export default function RoomPage() {
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 shadow-md text-center">
               <h2 className="text-2xl font-bold text-white mb-1">🎯 Pick a Topic</h2>
               <p className="text-purple-100">
-                {topicPicker?.id === 'self'
+                {topicPicker && isSelf(topicPicker.id)
                   ? 'You have the highest card! Choose a topic for this round.'
                   : `${topicPicker?.name} is choosing the topic...`
                 }
               </p>
             </div>
 
-            {topicPicker?.id === 'self' ? (
+            {topicPicker && isSelf(topicPicker.id) ? (
               <TopicSelector
                 onSelectTopic={handleSelectTopic}
                 selectedTopicId={selectedTopic?.id}
@@ -695,77 +762,131 @@ export default function RoomPage() {
         )}
 
         {/* Playing View */}
-        {phase === 'playing' && (
+        {phase === 'playing' && online.game && (
           <div>
-            {/* Turn order display */}
+            {/* Connection status */}
+            {online.error && (
+              <div className="mb-4 px-4 py-2 bg-red-500/20 text-red-300 rounded-lg text-sm">
+                {online.error}
+              </div>
+            )}
+
+            {/* Turn indicator */}
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-sm">Turn order:</span>
-                {playerOrder.map((idx, position) => (
+                <span className="text-gray-400 text-sm">Players:</span>
+                {online.game.players.map((p, idx) => (
                   <span
-                    key={players[idx]?.id}
-                    className={`text-sm ${position === 0 ? 'text-amber-400 font-bold' : 'text-gray-500'}`}
+                    key={p.id}
+                    className={`text-sm px-2 py-1 rounded ${
+                      online.game!.currentPlayerIndex === idx
+                        ? 'bg-amber-500/30 text-amber-400 font-bold'
+                        : 'text-gray-500'
+                    }`}
                   >
-                    {position > 0 && '→'}
-                    {' '}{players[idx]?.avatar} {players[idx]?.name}
+                    {p.name} ({p.hand.length})
                   </span>
                 ))}
               </div>
               <span className="text-teal-400 text-sm">
-                Round 1
+                {online.game.phase}
               </span>
             </div>
 
             <GameTable
-              players={players.map((p, idx) => ({
+              players={online.game.players.map((p, idx) => ({
                 id: p.id,
                 name: p.name,
-                avatar: p.avatar,
-                cardsInHand: 7,
+                avatar: AVATARS[idx % AVATARS.length],
+                cardsInHand: p.hand.length,
                 score: 0,
-                isCurrentTurn: playerOrder[0] === idx,
-                isHost: p.isHost,
-                isSelf: p.id === 'self',
-                status: 'playing' as const
+                isCurrentTurn: online.game!.currentPlayerIndex === idx,
+                isHost: idx === 0,
+                isSelf: p.id === online.playerId,
+                status: p.isActive ? 'playing' as const : 'waiting' as const
               }))}
               maxPlayers={settings.maxPlayers}
               centerContent={
-                <div className="flex flex-col items-center gap-4">
-                  <p className="text-white text-lg font-semibold">
-                    Build: &quot;{selectedTopic?.name || 'Loading...'}&quot;
-                  </p>
-                  <div className="flex gap-2">
-                    {['___', '___', '___'].map((slot, i) => (
-                      <div
-                        key={i}
-                        className="w-24 h-16 rounded-lg border-2 flex items-center justify-center
-                                  bg-white/10 border-white/30 border-dashed"
-                      >
-                        <span className="text-white/50">?</span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-teal-200 text-sm">
-                    {players[playerOrder[0]]?.name || 'Player'} is building...
-                  </p>
-                </div>
+                <MultiplayerSentenceBuilder
+                  tableSlots={online.game.tableSlots}
+                  turnState={online.game.turnState}
+                  selectedCard={selectedCard}
+                  isMyTurn={online.isMyTurn}
+                  currentPlayerName={online.game.players[online.game.currentPlayerIndex]?.name || 'Player'}
+                  onPlayCard={(slotId) => {
+                    if (selectedCard) {
+                      online.playCard(selectedCard.id, slotId);
+                      setSelectedCard(null);
+                    }
+                  }}
+                  onCreateSlot={() => {
+                    if (selectedCard) {
+                      online.createSlot(selectedCard.id);
+                      setSelectedCard(null);
+                    }
+                  }}
+                />
               }
               currentTopic={selectedTopic ? {
                 icon: selectedTopic.icon,
                 name: selectedTopic.name,
                 maori: selectedTopic.maori
               } : undefined}
-              bottomContent={
-                <div className="bg-white/95 rounded-t-xl shadow-lg p-4 mx-4">
-                  <h3 className="font-bold text-gray-700 mb-2">Your Hand</h3>
-                  <CardHand
-                    cards={hand}
-                    selectedCardId={selectedCard?.id}
-                    onSelectCard={(card) => setSelectedCard(selectedCard?.id === card.id ? null : card)}
-                  />
-                </div>
-              }
             />
+
+            {/* Hand - positioned below the table */}
+            <div className="-mt-16 bg-white/95 rounded-xl shadow-lg p-3 relative z-10">
+              {/* Hand header with actions */}
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="font-bold text-gray-700">
+                  Your Hand ({online.currentPlayer?.hand.length || 0})
+                </h3>
+                {online.isMyTurn && (
+                  <div className="flex gap-2">
+                    {online.game.turnState.playedCards.length > 0 && (
+                      <button
+                        onClick={() => online.undoLastCard()}
+                        className="px-3 py-1 bg-gray-500 text-white rounded-lg text-sm font-semibold hover:bg-gray-600"
+                      >
+                        Undo
+                      </button>
+                    )}
+                    <button
+                      onClick={() => online.passTurn()}
+                      className="px-3 py-1 bg-amber-500 text-white rounded-lg text-sm font-semibold hover:bg-amber-600"
+                    >
+                      Pass
+                    </button>
+                    {online.game.turnState.playedCards.length > 0 && (
+                      <button
+                        onClick={() => online.submitTurn(online.currentSentence, '')}
+                        className="px-4 py-1 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700"
+                      >
+                        Kōrero! ✓
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Card hand */}
+              <CardHand
+                cards={online.currentPlayer?.hand || []}
+                selectedCardId={selectedCard?.id}
+                onSelectCard={(card) => {
+                  if (online.isMyTurn) {
+                    setSelectedCard(selectedCard?.id === card.id ? null : card);
+                  }
+                }}
+              />
+
+              {/* Not your turn indicator */}
+              {!online.isMyTurn && (
+                <div className="mt-2 text-center text-gray-500 text-sm">
+                  Waiting for {online.game.players[online.game.currentPlayerIndex]?.name}...
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

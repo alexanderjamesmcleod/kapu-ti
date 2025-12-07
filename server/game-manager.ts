@@ -79,7 +79,7 @@ export class GameManager {
       name: playerName,
       socketId,
       isHost: false,
-      isReady: false,
+      isReady: true, // Auto-ready - no need to click ready button
     };
 
     room.players.push(player);
@@ -143,6 +143,47 @@ export class GameManager {
     }
 
     return room;
+  }
+
+  // Add a bot player to the room
+  addBot(socketId: string, botName?: string): { room: Room; bot: RoomPlayer } | { error: string } {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId) return { error: 'Player not found' };
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return { error: 'Room not found' };
+
+    const room = this.rooms.get(roomCode);
+    if (!room) return { error: 'Room not found' };
+
+    // Check if player is host
+    if (room.hostId !== playerId) {
+      return { error: 'Only host can add bots' };
+    }
+
+    // Check room capacity
+    if (room.players.length >= 4) {
+      return { error: 'Room is full' };
+    }
+
+    // Generate bot name if not provided
+    const botNames = ['Aroha', 'Tāne', 'Maia', 'Kahu', 'Ngaio', 'Wiremu', 'Hine', 'Mere'];
+    const existingNames = room.players.map(p => p.name);
+    const availableNames = botNames.filter(n => !existingNames.includes(n));
+    const name = botName || availableNames[Math.floor(Math.random() * availableNames.length)] || `Bot${room.players.length}`;
+
+    const bot: RoomPlayer = {
+      id: generateId(),
+      name,
+      socketId: `bot-${Date.now()}`, // Fake socket ID for bots
+      isHost: false,
+      isReady: true, // Bots are always ready
+    };
+
+    room.players.push(bot);
+    this.playerToRoom.set(bot.id, roomCode);
+
+    return { room, bot };
   }
 
   // Start game

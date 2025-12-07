@@ -68,6 +68,7 @@ interface UseOnlineGameReturn {
   joinRoom: (roomCode: string, playerName: string) => void;
   leaveRoom: () => void;
   setReady: (ready: boolean) => void;
+  addBot: (botName?: string) => void;
   startGame: () => void;
 
   // Game actions
@@ -270,6 +271,10 @@ export function useOnlineGame(): UseOnlineGameReturn {
     send({ type: 'SET_READY', ready });
   }, [send]);
 
+  const addBot = useCallback((botName?: string) => {
+    send({ type: 'ADD_BOT', botName });
+  }, [send]);
+
   const startGame = useCallback(() => {
     send({ type: 'START_GAME' });
   }, [send]);
@@ -328,6 +333,7 @@ export function useOnlineGame(): UseOnlineGameReturn {
     joinRoom,
     leaveRoom,
     setReady,
+    addBot,
     startGame,
 
     // Game actions

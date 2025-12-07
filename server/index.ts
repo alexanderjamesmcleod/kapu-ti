@@ -127,6 +127,21 @@ wss.on('connection', (ws: WebSocket) => {
           break;
         }
 
+        case 'ADD_BOT': {
+          const result = gameManager.addBot(socketId, message.botName);
+          if ('error' in result) {
+            send(ws, { type: 'ERROR', message: result.error });
+          } else {
+            // Notify all players in the room about the new bot
+            broadcast(result.room.code, {
+              type: 'PLAYER_JOINED',
+              player: result.bot,
+            });
+            console.log(`Bot ${result.bot.name} added to room ${result.room.code}`);
+          }
+          break;
+        }
+
         case 'START_GAME': {
           const result = gameManager.startGame(socketId);
           if ('error' in result) {

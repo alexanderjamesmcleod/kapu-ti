@@ -38,6 +38,7 @@ export type ClientMessage =
   | { type: 'JOIN_ROOM'; roomCode: string; playerName: string }
   | { type: 'LEAVE_ROOM' }
   | { type: 'SET_READY'; ready: boolean }
+  | { type: 'ADD_BOT'; botName?: string }
   | { type: 'START_GAME' }
   | { type: 'PLAY_CARD'; cardId: string; slotId: string }
   | { type: 'CREATE_SLOT'; cardId: string }

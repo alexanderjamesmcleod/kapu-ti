@@ -137,22 +137,39 @@ Round 4 (morph): "Kei te tino matekai au" → "I am very hungry"
 
 ## What's Been Built
 
+### Online Multiplayer (COMPLETE!)
+- **WebSocket Server:** Real-time game state sync on port 3002
+- **Room System:** Create/Join with 4-letter codes (e.g., RALP, KAHU)
+- **Auto-Ready:** Players join and are immediately ready (no button clicks)
+- **Multi-Player Sync:** Both host and joining players see turn order phase
+- **Bot Support:** Host can add AI opponents for testing
+
 ### Multiplayer Room System (`/play/room`)
 - Create/Join/Browse rooms with 4-letter codes
 - Spectate mode with queue to join next game
-- Lobby with ready-up system
+- Auto-ready lobby (no manual ready-up needed)
 
 ### Turn Order Flow
 - Māori numbers 1-20 as flip cards
 - Tap to reveal animation
 - Crown for highest card holder
 - Winner picks the topic
+- **Fixed:** Joining players now correctly see turn order phase
 
 ### Poker Table UI (`GameTable` component)
 - Oval felt table with players positioned around
-- Current turn glow effect
+- Current turn glow effect (amber highlight)
 - Video feed placeholders with toggle button
+- Topic indicator below sentence builder
+- Hand panel positioned below table (not overlapping)
 - Spectator view
+
+### Multiplayer Sentence Builder
+- Real-time slot-based sentence construction
+- Color-coded word types (nouns, verbs, particles, etc.)
+- Play cards into existing slots or create new ones
+- Undo support for last played card
+- Pass turn and Kōrero (submit) actions
 
 ### Topic System (`/play/topic`)
 - 6 topics: Food, Feelings, Actions, Animals, People, Places
