@@ -301,7 +301,8 @@ export function submitTurn(
   return { success: true, game: newGame };
 }
 
-// Handle successful turn
+// Handle successful turn (Kōrero approved!)
+// Winner can discard up to 3 cards, picks topic for next round, and goes first
 function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
   const currentPlayerIdx = game.currentPlayerIndex;
   const player = game.players[currentPlayerIdx];
@@ -338,26 +339,51 @@ function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
     };
   }
 
-  // Player draws 1 card
-  const newDrawPile = [...game.drawPile];
-  const drawnCard = newDrawPile.shift();
+  // Kōrero approved! Discard up to 3 cards and go to topic selection
+  // For now, we auto-discard the first 3 cards (can add UI later)
+  const cardsToDiscard = Math.min(3, player.hand.length);
+  const discardedCards = player.hand.slice(0, cardsToDiscard);
+  const remainingHand = player.hand.slice(cardsToDiscard);
 
   const newPlayers = [...game.players];
-  if (drawnCard) {
-    newPlayers[currentPlayerIdx] = {
-      ...player,
-      hand: [...player.hand, drawnCard],
-    };
+  newPlayers[currentPlayerIdx] = {
+    ...player,
+    hand: remainingHand,
+  };
+
+  // Check if player now emptied their hand after discard
+  if (remainingHand.length === 0) {
+    newPlayers[currentPlayerIdx] = { ...newPlayers[currentPlayerIdx], isActive: false };
+
+    const newWinners = [...game.winnersInOrder, player.id];
+    const remainingActive = newPlayers.filter(p => p.isActive);
+
+    if (remainingActive.length === 1) {
+      return {
+        ...game,
+        players: newPlayers,
+        discardPile: [...game.discardPile, ...discardedCards],
+        winnersInOrder: newWinners,
+        loserId: remainingActive[0].id,
+        phase: 'finished',
+        turnState: createInitialTurnState(),
+      };
+    }
   }
 
+  // Winner picks topic for next round (goes to topicSelect phase)
+  // Set turnOrderWinner to current player so they get to select topic
   return {
     ...game,
     players: newPlayers,
-    drawPile: newDrawPile,
-    currentPlayerIndex: findNextActivePlayer(game.players, currentPlayerIdx),
-    phase: 'turnEnd',
+    discardPile: [...game.discardPile, ...discardedCards],
+    // Keep currentPlayerIndex - winner goes first after topic selection
+    turnOrderWinner: currentPlayerIdx,
+    phase: 'topicSelect',
     turnState: createInitialTurnState(),
     verificationVotes: [],
+    // Clear current topic so new one can be selected
+    currentTopic: undefined,
   };
 }
 

@@ -289,6 +289,68 @@ export class GameManager {
     return { game: room.game, room };
   }
 
+  // Process bot topic selection when game is in topicSelect phase
+  processBotTopicSelection(roomCode: string): { game: MultiplayerGame; room: Room } | null {
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.game) return null;
+
+    // Only process if in topicSelect phase
+    if (room.game.phase !== 'topicSelect') return null;
+
+    // Find who should select the topic (turnOrderWinner)
+    const selectorIndex = room.game.turnOrderWinner;
+    if (selectorIndex === null || selectorIndex === undefined) return null;
+
+    const selectorPlayerId = room.game.players[selectorIndex].id;
+    const selectorPlayer = room.players.find(p => p.id === selectorPlayerId);
+
+    // Only process if selector is a bot
+    if (!selectorPlayer || !selectorPlayer.socketId.startsWith('bot-')) return null;
+
+    // Pick a random topic
+    const topicIds = ['food', 'feelings', 'actions', 'animals', 'people', 'places'];
+    const randomTopic = topicIds[Math.floor(Math.random() * topicIds.length)];
+
+    const result = selectTopic(room.game, selectorPlayerId, randomTopic);
+    if (result.success) {
+      room.game = result.game;
+      console.log(`[Bot Topic] ${selectorPlayer.name} selected topic: ${randomTopic}`);
+    }
+
+    return { game: room.game, room };
+  }
+
+  // Process bot votes when game enters verification phase
+  processBotVotes(roomCode: string): { game: MultiplayerGame; room: Room } | null {
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.game) return null;
+
+    // Only process if in verification phase
+    if (room.game.phase !== 'verification') return null;
+
+    // Find the current player (speaker) to exclude from voting
+    const currentPlayerId = room.game.players[room.game.currentPlayerIndex].id;
+
+    // Find all bot players who haven't voted yet
+    const botPlayers = room.players.filter(p =>
+      p.socketId.startsWith('bot-') &&
+      p.id !== currentPlayerId &&
+      !room.game!.verificationVotes.some(v => v.playerId === p.id)
+    );
+
+    // Have each bot vote (80% chance to approve)
+    for (const bot of botPlayers) {
+      const approved = Math.random() < 0.8;
+      const result = vote(room.game, bot.id, approved);
+      if (result.success) {
+        room.game = result.game;
+        console.log(`[Bot Vote] ${bot.name} voted ${approved ? 'Āe' : 'Kāo'}`);
+      }
+    }
+
+    return { game: room.game, room };
+  }
+
   // Confirm turn end
   confirmTurnEnd(socketId: string): { game: MultiplayerGame; room: Room } | { error: string } {
     const playerId = this.socketToPlayer.get(socketId);

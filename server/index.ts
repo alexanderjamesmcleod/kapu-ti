@@ -166,6 +166,16 @@ wss.on('connection', (ws: WebSocket) => {
               }
             }
             console.log(`Game started in room ${result.room.code}`);
+
+            // If game starts in topicSelect phase with a bot selector, auto-select topic
+            if (result.game.phase === 'topicSelect') {
+              setTimeout(() => {
+                const topicResult = gameManager.processBotTopicSelection(result.room.code);
+                if (topicResult) {
+                  broadcastGameState(result.room.code, topicResult.game);
+                }
+              }, 1500); // 1.5 second delay for players to see the phase
+            }
           }
           break;
         }
@@ -183,6 +193,35 @@ wss.on('connection', (ws: WebSocket) => {
             send(ws, { type: 'ERROR', message: result.error });
           } else if (result) {
             broadcastGameState(result.room.code, result.game);
+
+            // After SUBMIT_TURN, trigger bot voting with a small delay
+            if (message.type === 'SUBMIT_TURN' && result.game.phase === 'verification') {
+              setTimeout(() => {
+                const botResult = gameManager.processBotVotes(result.room.code);
+                if (botResult) {
+                  broadcastGameState(result.room.code, botResult.game);
+                  // After bot voting, check if we're now in topicSelect
+                  if (botResult.game.phase === 'topicSelect') {
+                    setTimeout(() => {
+                      const topicResult = gameManager.processBotTopicSelection(result.room.code);
+                      if (topicResult) {
+                        broadcastGameState(result.room.code, topicResult.game);
+                      }
+                    }, 1000);
+                  }
+                }
+              }, 1000); // 1 second delay for dramatic effect
+            }
+
+            // After any action, if game is in topicSelect, check for bot topic selection
+            if (result.game.phase === 'topicSelect') {
+              setTimeout(() => {
+                const topicResult = gameManager.processBotTopicSelection(result.room.code);
+                if (topicResult) {
+                  broadcastGameState(result.room.code, topicResult.game);
+                }
+              }, 1000);
+            }
           }
           break;
         }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameTable, CardHand, MultiplayerSentenceBuilder } from '@/components';
+import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, VoteResultModal } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
 import VoiceControls from '@/components/VoiceControls';
+import { getSentenceFromSlots } from '@/types/multiplayer.types';
 import type { TablePlayer } from '@/components/GameTable';
 import type { Card as CardType } from '@/types';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
@@ -818,8 +819,8 @@ export default function RoomPage() {
                 <h3 className="font-bold text-gray-700">
                   Your Hand ({online.currentPlayer?.hand.length || 0})
                 </h3>
-                {online.isMyTurn && (
-                  <div className="flex gap-2">
+                {online.isMyTurn && online.game.phase === 'playing' && (
+                  <div className="flex gap-2 items-center">
                     {online.game.turnState.playedCards.length > 0 && (
                       <button
                         onClick={() => online.undoLastCard()}
@@ -835,12 +836,11 @@ export default function RoomPage() {
                       Pass
                     </button>
                     {online.game.turnState.playedCards.length > 0 && (
-                      <button
-                        onClick={() => online.submitTurn(online.currentSentence, '')}
-                        className="px-4 py-1 bg-teal-600 text-white rounded-lg text-sm font-bold hover:bg-teal-700"
-                      >
-                        Kōrero! ✓
-                      </button>
+                      <KoreroButton
+                        disabled={false}
+                        sentence={getSentenceFromSlots(online.game.tableSlots)}
+                        onKorero={(translation) => online.submitTurn(getSentenceFromSlots(online.game!.tableSlots), translation)}
+                      />
                     )}
                   </div>
                 )}
@@ -865,6 +865,20 @@ export default function RoomPage() {
               )}
             </div>
               </>
+            )}
+
+            {/* Verification Phase - Voting Overlay */}
+            {online.game.phase === 'verification' && (
+              <VotingOverlay
+                speakerName={online.game.players[online.game.currentPlayerIndex]?.name || 'Player'}
+                sentence={getSentenceFromSlots(online.game.tableSlots)}
+                translation={online.game.turnState.translation || ''}
+                votes={online.game.verificationVotes}
+                totalVoters={online.game.players.filter(p => p.isActive && p.id !== online.game!.players[online.game!.currentPlayerIndex].id).length}
+                hasVoted={online.game.verificationVotes.some(v => v.playerId === online.playerId)}
+                isCurrentPlayer={online.isMyTurn}
+                onVote={(approved) => online.vote(approved)}
+              />
             )}
 
             {/* Floating Voice + Chat Controls - visible in all game phases */}

@@ -171,6 +171,23 @@ Round 4 (morph): "Kei te tino matekai au" → "I am very hungry"
 - Undo support for last played card
 - Pass turn and Kōrero (submit) actions
 
+### Kōrero Button & Voting System (NEW!)
+- **Kōrero Button:** Opens modal for player to submit their turn
+  - Shows current sentence in Māori
+  - Text input for English translation
+  - Submit sends to verification phase
+- **VotingOverlay:** Other players vote Āe (approve) or Kāo (decline)
+  - Big, dramatic voting buttons
+  - 15-second countdown timer
+  - Live vote tally display
+  - Progress bar showing votes received
+- **VoteResultModal:** Dramatic result reveal
+  - Green/red background based on result
+  - Vote breakdown by player
+  - Consequence display (winner picks topic, loser picks up cards)
+- **Bot Auto-Voting:** Bots automatically vote (80% approval rate)
+- **Bot Topic Selection:** Bots auto-select random topic when they win
+
 ### Topic System (`/play/topic`)
 - 6 topics: Food, Feelings, Actions, Animals, People, Places
 - Sentence morphing (he_simple → keite_state → keite_intensified)
