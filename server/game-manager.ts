@@ -320,6 +320,40 @@ export class GameManager {
     return { game: room.game, room };
   }
 
+  // Process bot turn when game is in playing phase and it's a bot's turn
+  processBotTurn(roomCode: string): { game: MultiplayerGame; room: Room } | null {
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.game) return null;
+
+    // Only process if in playing phase
+    if (room.game.phase !== 'playing') return null;
+
+    // Get the current player
+    const currentPlayerId = room.game.players[room.game.currentPlayerIndex].id;
+    const currentPlayer = room.players.find(p => p.id === currentPlayerId);
+
+    // Only process if current player is a bot
+    if (!currentPlayer || !currentPlayer.socketId.startsWith('bot-')) return null;
+
+    // For now, bots just pass their turn (simple AI)
+    const result = passTurn(room.game, currentPlayerId);
+    if (result.success) {
+      room.game = result.game;
+      console.log(`[Bot Turn] ${currentPlayer.name} passed their turn`);
+
+      // Auto-confirm turn end for online play (no privacy screen needed)
+      if (room.game.phase === 'turnEnd') {
+        const confirmResult = confirmTurnEnd(room.game);
+        if (confirmResult.success) {
+          room.game = confirmResult.game;
+          console.log(`[Bot Turn] Auto-confirmed turn end, now ${room.game.players[room.game.currentPlayerIndex]?.name}'s turn`);
+        }
+      }
+    }
+
+    return { game: room.game, room };
+  }
+
   // Process bot votes when game enters verification phase
   processBotVotes(roomCode: string): { game: MultiplayerGame; room: Room } | null {
     const room = this.rooms.get(roomCode);

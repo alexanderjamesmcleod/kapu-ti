@@ -173,6 +173,15 @@ wss.on('connection', (ws: WebSocket) => {
                 const topicResult = gameManager.processBotTopicSelection(result.room.code);
                 if (topicResult) {
                   broadcastGameState(result.room.code, topicResult.game);
+                  // After topic selection, check if it's a bot's turn
+                  if (topicResult.game.phase === 'playing') {
+                    setTimeout(() => {
+                      const botTurnResult = gameManager.processBotTurn(result.room.code);
+                      if (botTurnResult) {
+                        broadcastGameState(result.room.code, botTurnResult.game);
+                      }
+                    }, 1500);
+                  }
                 }
               }, 1500); // 1.5 second delay for players to see the phase
             }
@@ -219,8 +228,27 @@ wss.on('connection', (ws: WebSocket) => {
                 const topicResult = gameManager.processBotTopicSelection(result.room.code);
                 if (topicResult) {
                   broadcastGameState(result.room.code, topicResult.game);
+                  // After topic selection, if we're in playing phase, check for bot turn
+                  if (topicResult.game.phase === 'playing') {
+                    setTimeout(() => {
+                      const botTurnResult = gameManager.processBotTurn(result.room.code);
+                      if (botTurnResult) {
+                        broadcastGameState(result.room.code, botTurnResult.game);
+                      }
+                    }, 1500);
+                  }
                 }
               }, 1000);
+            }
+
+            // After any action that leaves us in playing phase, check if it's a bot's turn
+            if (result.game.phase === 'playing') {
+              setTimeout(() => {
+                const botTurnResult = gameManager.processBotTurn(result.room.code);
+                if (botTurnResult) {
+                  broadcastGameState(result.room.code, botTurnResult.game);
+                }
+              }, 1500); // 1.5 second delay for dramatic effect
             }
           }
           break;

@@ -819,7 +819,7 @@ export default function RoomPage() {
                 <h3 className="font-bold text-gray-700">
                   Your Hand ({online.currentPlayer?.hand.length || 0})
                 </h3>
-                {online.isMyTurn && online.game.phase === 'playing' && (
+                {online.isMyTurn && (online.game.phase === 'playing' || online.game.phase === 'turnEnd') && (
                   <div className="flex gap-2 items-center">
                     {online.game.turnState.playedCards.length > 0 && (
                       <button
