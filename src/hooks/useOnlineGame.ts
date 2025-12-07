@@ -99,6 +99,8 @@ interface UseOnlineGameReturn {
   startGame: () => void;
 
   // Game actions
+  revealTurnOrderCard: () => void;
+  selectTopic: (topicId: string) => void;
   playCard: (cardId: string, slotId: string) => void;
   createSlot: (cardId: string) => void;
   submitTurn: (spoken: string, translation: string) => void;
@@ -374,6 +376,14 @@ export function useOnlineGame(): UseOnlineGameReturn {
   }, [send]);
 
   // Game actions
+  const revealTurnOrderCard = useCallback(() => {
+    send({ type: 'REVEAL_TURN_ORDER_CARD' });
+  }, [send]);
+
+  const selectTopic = useCallback((topicId: string) => {
+    send({ type: 'SELECT_TOPIC', topicId });
+  }, [send]);
+
   const playCard = useCallback((cardId: string, slotId: string) => {
     send({ type: 'PLAY_CARD', cardId, slotId });
   }, [send]);
@@ -447,6 +457,8 @@ export function useOnlineGame(): UseOnlineGameReturn {
     startGame,
 
     // Game actions
+    revealTurnOrderCard,
+    selectTopic,
     playCard,
     createSlot,
     submitTurn,

@@ -25,6 +25,8 @@ export interface TableSlot {
 export type GamePhase =
   | 'setup'             // Entering player names
   | 'dealing'           // Cards being dealt
+  | 'turnOrder'         // Revealing turn order cards
+  | 'topicSelect'       // Winner picks topic
   | 'playing'           // Active gameplay
   | 'verification'      // Checking pronunciation/translation
   | 'turnEnd'           // Between turns (privacy screen)
@@ -45,6 +47,22 @@ export interface VerificationVote {
   approved: boolean;
 }
 
+// Turn order card (Māori number)
+export interface TurnOrderCard {
+  value: number;
+  maori: string;
+  english: string;
+  revealed: boolean;
+}
+
+// Topic for the round
+export interface GameTopic {
+  id: string;
+  name: string;
+  maori: string;
+  icon: string;
+}
+
 // Complete game state
 export interface MultiplayerGame {
   id: string;
@@ -59,6 +77,11 @@ export interface MultiplayerGame {
   verificationVotes: VerificationVote[];
   winnersInOrder: string[];         // Player IDs in order they won
   loserId: string | null;           // The one who makes tea!
+  // Turn order phase
+  turnOrderCards?: TurnOrderCard[]; // One per player, index matches player index
+  turnOrderWinner?: number;         // Player index who had highest card
+  // Topic selection
+  currentTopic?: GameTopic;         // The topic for this round
 }
 
 // Actions that can be taken

@@ -10,11 +10,14 @@ import type {
   TurnState,
   MultiplayerGame,
   GameSettings,
+  TurnOrderCard,
+  GameTopic,
 } from '../src/types/multiplayer.types';
 import {
   DEFAULT_GAME_SETTINGS,
   createInitialTurnState,
 } from '../src/types/multiplayer.types';
+import { MAORI_NUMBERS, TOPICS } from '../src/data/topics';
 
 // Import word library for card generation
 import { ALL_WORDS } from '../src/data/wordLibrary';
@@ -65,6 +68,18 @@ function createInitialSlots(pattern: string[]): TableSlot[] {
   }));
 }
 
+// Deal turn order cards to players (all revealed automatically)
+function dealTurnOrderCards(playerCount: number): TurnOrderCard[] {
+  // Shuffle the number cards and deal one to each player
+  const shuffled = shuffle([...MAORI_NUMBERS]);
+  return shuffled.slice(0, playerCount).map(card => ({
+    value: card.value,
+    maori: card.maori,
+    english: card.english,
+    revealed: true,  // Auto-revealed - no manual step needed
+  }));
+}
+
 // Initialize a new game
 export function initializeGame(
   playerIds: string[],
@@ -74,13 +89,30 @@ export function initializeGame(
   // Create all cards and shuffle
   const allCards = shuffle(ALL_WORDS.map(wordToCard));
 
-  // Create players and deal cards
-  const players: Player[] = playerIds.map((id, index) => ({
+  // Deal turn order cards first to determine seating order
+  const turnOrderCards = dealTurnOrderCards(playerIds.length);
+
+  // Create player data with their turn order cards
+  const playerData = playerIds.map((id, index) => ({
     id,
     name: playerNames[index],
+    turnOrderCard: turnOrderCards[index],
+    originalIndex: index,
+  }));
+
+  // Sort players by turn order card value (highest first)
+  playerData.sort((a, b) => b.turnOrderCard.value - a.turnOrderCard.value);
+
+  // Reorder turn order cards to match sorted players
+  const sortedTurnOrderCards = playerData.map(p => p.turnOrderCard);
+
+  // Create players in sorted order and deal cards
+  const players: Player[] = playerData.map((data, index) => ({
+    id: data.id,
+    name: data.name,
     hand: allCards.splice(0, settings.cardsPerPlayer),
     isActive: true,
-    position: index,
+    position: index,  // Position is now based on turn order (highest first)
   }));
 
   // Remaining cards go to draw pile
@@ -89,19 +121,25 @@ export function initializeGame(
   // Create starting table slots
   const tableSlots = createInitialSlots(settings.startingPattern);
 
+  // Winner is player at index 0 (highest card value)
+  const turnOrderWinner = 0;
+
   return {
     id: generateId(),
     players,
-    currentPlayerIndex: 0,
+    currentPlayerIndex: 0,  // First player (highest card) starts
     tableSlots,
     drawPile,
     discardPile: [],
     startingPattern: settings.startingPattern,
-    phase: 'playing',
+    phase: 'topicSelect',  // Skip turnOrder, go straight to topic selection
     turnState: createInitialTurnState(),
     verificationVotes: [],
     winnersInOrder: [],
     loserId: null,
+    turnOrderCards: sortedTurnOrderCards,
+    turnOrderWinner,
+    currentTopic: undefined,
   };
 }
 
@@ -521,6 +559,121 @@ export function serializeGameForWire(game: MultiplayerGame): object {
     turnState: {
       ...game.turnState,
       colorsPlayedThisTurn: Array.from(game.turnState.colorsPlayedThisTurn),
+    },
+  };
+}
+
+// Reveal a player's turn order card
+export function revealTurnOrderCard(
+  game: MultiplayerGame,
+  playerId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  if (game.phase !== 'turnOrder') {
+    return { success: false, game, error: 'Not in turn order phase' };
+  }
+
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1) {
+    return { success: false, game, error: 'Player not found' };
+  }
+
+  if (!game.turnOrderCards || !game.turnOrderCards[playerIndex]) {
+    return { success: false, game, error: 'No turn order card for player' };
+  }
+
+  // Already revealed
+  if (game.turnOrderCards[playerIndex].revealed) {
+    return { success: true, game };
+  }
+
+  // Reveal this player's card
+  const newTurnOrderCards = [...game.turnOrderCards];
+  newTurnOrderCards[playerIndex] = {
+    ...newTurnOrderCards[playerIndex],
+    revealed: true,
+  };
+
+  // Check if all cards are now revealed
+  const allRevealed = newTurnOrderCards.every(c => c.revealed);
+
+  if (allRevealed) {
+    // Find the winner (highest card value)
+    let highestValue = -1;
+    let winnerIndex = 0;
+    newTurnOrderCards.forEach((card, idx) => {
+      if (card.value > highestValue) {
+        highestValue = card.value;
+        winnerIndex = idx;
+      }
+    });
+
+    return {
+      success: true,
+      game: {
+        ...game,
+        turnOrderCards: newTurnOrderCards,
+        turnOrderWinner: winnerIndex,
+        currentPlayerIndex: winnerIndex, // Winner goes first AND picks topic
+        phase: 'topicSelect',
+      },
+    };
+  }
+
+  return {
+    success: true,
+    game: {
+      ...game,
+      turnOrderCards: newTurnOrderCards,
+    },
+  };
+}
+
+// Get available topics
+export function getAvailableTopics(): GameTopic[] {
+  return TOPICS.map(t => ({
+    id: t.id,
+    name: t.name,
+    maori: t.maori,
+    icon: t.icon,
+  }));
+}
+
+// Select a topic (by the turn order winner)
+export function selectTopic(
+  game: MultiplayerGame,
+  playerId: string,
+  topicId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  if (game.phase !== 'topicSelect') {
+    return { success: false, game, error: 'Not in topic selection phase' };
+  }
+
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1) {
+    return { success: false, game, error: 'Player not found' };
+  }
+
+  // Only the turn order winner can select the topic
+  if (playerIndex !== game.turnOrderWinner) {
+    return { success: false, game, error: 'Only the turn order winner can select the topic' };
+  }
+
+  const topic = TOPICS.find(t => t.id === topicId);
+  if (!topic) {
+    return { success: false, game, error: 'Invalid topic' };
+  }
+
+  return {
+    success: true,
+    game: {
+      ...game,
+      currentTopic: {
+        id: topic.id,
+        name: topic.name,
+        maori: topic.maori,
+        icon: topic.icon,
+      },
+      phase: 'playing',
     },
   };
 }

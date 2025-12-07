@@ -18,6 +18,8 @@ import {
   undoLastCard,
   sanitizeGameForPlayer,
   serializeGameForWire,
+  revealTurnOrderCard,
+  selectTopic,
 } from './game-logic';
 
 export class GameManager {
@@ -42,11 +44,13 @@ export class GameManager {
       isReady: true,
     };
 
+    const now = Date.now();
     const room: Room = {
       code: roomCode,
       players: [player],
       game: null,
-      createdAt: Date.now(),
+      createdAt: now,
+      lastActivity: now,
       hostId: playerId,
     };
 
@@ -83,10 +87,19 @@ export class GameManager {
     };
 
     room.players.push(player);
+    room.lastActivity = Date.now();
     this.playerToRoom.set(playerId, roomCode);
     this.socketToPlayer.set(socketId, playerId);
 
     return { room, playerId };
+  }
+
+  // Update activity timestamp for a room
+  private updateActivity(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (room) {
+      room.lastActivity = Date.now();
+    }
   }
 
   // Leave room
@@ -239,6 +252,12 @@ export class GameManager {
     let result: { success: boolean; game: MultiplayerGame; error?: string };
 
     switch (message.type) {
+      case 'REVEAL_TURN_ORDER_CARD':
+        result = revealTurnOrderCard(room.game, playerId);
+        break;
+      case 'SELECT_TOPIC':
+        result = selectTopic(room.game, playerId, message.topicId);
+        break;
       case 'PLAY_CARD':
         result = playCard(room.game, playerId, message.cardId, message.slotId);
         break;
@@ -266,6 +285,7 @@ export class GameManager {
     }
 
     room.game = result.game;
+    room.lastActivity = Date.now();
     return { game: room.game, room };
   }
 
@@ -346,18 +366,53 @@ export class GameManager {
     return serializeGameForWire(sanitized);
   }
 
-  // Clean up old rooms (call periodically)
-  cleanupOldRooms(maxAgeMs: number = 3600000): void {
+  // Clean up inactive rooms (call periodically)
+  // Returns list of deleted room codes for voice chat cleanup
+  cleanupInactiveRooms(inactivityTimeoutMs: number = 300000): string[] {
     const now = Date.now();
+    const deletedRooms: string[] = [];
+
     for (const [code, room] of this.rooms.entries()) {
-      if (now - room.createdAt > maxAgeMs && !room.game) {
+      const timeSinceActivity = now - room.lastActivity;
+      const hasOnlyBots = room.players.every(p => p.socketId.startsWith('bot-'));
+      const isEmpty = room.players.length === 0;
+
+      // Delete if:
+      // 1. Room is empty (no players)
+      // 2. Room has only bots (no real players)
+      // 3. Room inactive for too long (default 5 minutes)
+      if (isEmpty || hasOnlyBots || timeSinceActivity > inactivityTimeoutMs) {
+        console.log(`[Cleanup] Deleting room ${code}: empty=${isEmpty}, onlyBots=${hasOnlyBots}, inactive=${Math.round(timeSinceActivity/1000)}s`);
+
         // Clean up player mappings
         for (const player of room.players) {
           this.playerToRoom.delete(player.id);
-          this.socketToPlayer.delete(player.socketId);
+          if (!player.socketId.startsWith('bot-')) {
+            this.socketToPlayer.delete(player.socketId);
+          }
         }
         this.rooms.delete(code);
+        deletedRooms.push(code);
       }
     }
+
+    return deletedRooms;
+  }
+
+  // Get room stats for monitoring
+  getRoomStats(): { totalRooms: number; activeGames: number; totalPlayers: number } {
+    let activeGames = 0;
+    let totalPlayers = 0;
+
+    for (const room of this.rooms.values()) {
+      if (room.game) activeGames++;
+      totalPlayers += room.players.filter(p => !p.socketId.startsWith('bot-')).length;
+    }
+
+    return {
+      totalRooms: this.rooms.size,
+      activeGames,
+      totalPlayers,
+    };
   }
 }

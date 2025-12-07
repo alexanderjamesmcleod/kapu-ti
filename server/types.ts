@@ -29,6 +29,7 @@ export interface Room {
   players: RoomPlayer[];
   game: import('../src/types/multiplayer.types').MultiplayerGame | null;
   createdAt: number;
+  lastActivity: number;  // Timestamp of last player activity
   hostId: string;
 }
 
@@ -50,6 +51,8 @@ export type ClientMessage =
   | { type: 'SET_READY'; ready: boolean }
   | { type: 'ADD_BOT'; botName?: string }
   | { type: 'START_GAME' }
+  | { type: 'REVEAL_TURN_ORDER_CARD' }  // Player reveals their turn order card
+  | { type: 'SELECT_TOPIC'; topicId: string }  // Turn order winner selects topic
   | { type: 'PLAY_CARD'; cardId: string; slotId: string }
   | { type: 'CREATE_SLOT'; cardId: string }
   | { type: 'SUBMIT_TURN'; spoken: string; translation: string }

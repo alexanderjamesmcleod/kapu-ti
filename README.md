@@ -53,7 +53,9 @@ npm run dev
 1. Go to `/play` → Click "Online"
 2. **Create Room**: Enter your name → Click "Create New Room" → Share 4-letter code
 3. **Join Room**: Enter your name → Enter code → Click "Join"
-4. All players mark "Ready" → Host clicks "Start Game"
+4. Host clicks "Start Game"
+5. **Topic Selection**: Highest card holder picks the topic (automatic seating by card value)
+6. **Play**: Build sentences, say them aloud, and empty your hand!
 
 ### Playing Over the Internet (cloudflared)
 

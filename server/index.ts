@@ -170,6 +170,8 @@ wss.on('connection', (ws: WebSocket) => {
           break;
         }
 
+        case 'REVEAL_TURN_ORDER_CARD':
+        case 'SELECT_TOPIC':
         case 'PLAY_CARD':
         case 'CREATE_SLOT':
         case 'SUBMIT_TURN':
@@ -399,10 +401,26 @@ wss.on('connection', (ws: WebSocket) => {
   });
 });
 
-// Cleanup old rooms every hour
+// Cleanup inactive rooms every minute (5 min inactivity timeout)
+const CLEANUP_INTERVAL_MS = 60000;  // Check every minute
+const INACTIVITY_TIMEOUT_MS = 300000;  // 5 minutes of inactivity
+
 setInterval(() => {
-  gameManager.cleanupOldRooms();
-}, 3600000);
+  const deletedRooms = gameManager.cleanupInactiveRooms(INACTIVITY_TIMEOUT_MS);
+
+  // Clean up voice participants for deleted rooms
+  for (const roomCode of deletedRooms) {
+    voiceParticipants.delete(roomCode);
+  }
+
+  // Log stats periodically
+  const stats = gameManager.getRoomStats();
+  if (stats.totalRooms > 0) {
+    console.log(`[Stats] Rooms: ${stats.totalRooms}, Active games: ${stats.activeGames}, Players: ${stats.totalPlayers}`);
+  }
+}, CLEANUP_INTERVAL_MS);
+
+console.log(`Room cleanup: every ${CLEANUP_INTERVAL_MS/1000}s, inactivity timeout: ${INACTIVITY_TIMEOUT_MS/1000}s`);
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {

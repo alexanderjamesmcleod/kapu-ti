@@ -281,23 +281,23 @@ export default function RoomPage() {
   const isGamePhase = ['spectate', 'playing'].includes(phase);
 
   return (
-    <div className={`min-h-screen p-4 ${
+    <div className={`p-2 ${
       isGamePhase
-        ? 'bg-gradient-to-b from-gray-900 to-gray-800'
-        : 'bg-gradient-to-b from-teal-50 to-blue-50'
+        ? 'bg-gradient-to-b from-gray-900 to-gray-800 h-screen overflow-hidden'
+        : 'min-h-screen bg-gradient-to-b from-teal-50 to-blue-50'
     }`}>
-      <div className={isGamePhase ? 'max-w-5xl mx-auto' : 'max-w-md mx-auto'}>
+      <div className={isGamePhase ? 'max-w-5xl mx-auto h-full flex flex-col' : 'max-w-md mx-auto'}>
 
         {/* Header */}
-        <header className={`mb-6 ${isGamePhase ? 'text-white' : ''}`}>
+        <header className={`${isGamePhase ? 'mb-2 text-white flex-shrink-0' : 'mb-6'}`}>
           <div className="flex justify-between items-center">
             <button
               onClick={() => setPhase('menu')}
-              className={isGamePhase ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-800'}
+              className={`text-sm ${isGamePhase ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-800'}`}
             >
               ← Back
             </button>
-            <h1 className={`text-2xl font-bold ${isGamePhase ? 'text-white' : 'text-teal-800'}`}>
+            <h1 className={`font-bold ${isGamePhase ? 'text-lg text-white' : 'text-2xl text-teal-800'}`}>
               {phase === 'spectate' ? '👁 Spectating' :
                phase === 'playing' ? '🎮 Playing' :
                'Online'}
@@ -684,7 +684,7 @@ export default function RoomPage() {
 
         {/* Playing View */}
         {phase === 'playing' && online.game && (
-          <div>
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Connection warning */}
             {online.connectionState !== 'connected' && (
               <div className="mb-4 px-4 py-2 bg-amber-500/30 text-amber-300 rounded-lg text-sm flex items-center justify-between">
@@ -706,29 +706,75 @@ export default function RoomPage() {
               </div>
             )}
 
-            {/* Turn indicator */}
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400 text-sm">Players:</span>
-                {online.game.players.map((p, idx) => (
-                  <span
-                    key={p.id}
-                    className={`text-sm px-2 py-1 rounded ${
-                      online.game!.currentPlayerIndex === idx
-                        ? 'bg-amber-500/30 text-amber-400 font-bold'
-                        : 'text-gray-500'
-                    }`}
-                  >
-                    {p.name} ({p.hand.length})
-                  </span>
-                ))}
-              </div>
-              <span className="text-teal-400 text-sm">
-                {online.game.phase}
-              </span>
-            </div>
+            {/* ===== TOPIC SELECT PHASE ===== */}
+            {online.game.phase === 'topicSelect' && (
+              <div className="flex-1 flex flex-col items-center justify-center gap-6 p-4">
+                <h2 className="text-2xl font-bold text-white">He aha te kaupapa?</h2>
+                <p className="text-teal-300 text-sm">What's the topic for this round?</p>
 
-            <GameTable
+                {/* Who is selecting */}
+                {online.game.turnOrderWinner !== undefined && (
+                  <p className={`text-lg font-semibold ${
+                    online.game.players[online.game.turnOrderWinner]?.id === online.playerId
+                      ? 'text-amber-400'
+                      : 'text-gray-300'
+                  }`}>
+                    {online.game.players[online.game.turnOrderWinner]?.id === online.playerId
+                      ? '👑 You choose the topic!'
+                      : `👑 ${online.game.players[online.game.turnOrderWinner]?.name} is choosing...`
+                    }
+                  </p>
+                )}
+
+                {/* Topic cards */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-2xl">
+                  {[
+                    { id: 'kai', name: 'Food', maori: 'Kai', icon: '🍎' },
+                    { id: 'feelings', name: 'Feelings', maori: 'Kare ā-roto', icon: '😊' },
+                    { id: 'actions', name: 'Actions', maori: 'Mahi', icon: '🏃' },
+                    { id: 'animals', name: 'Animals', maori: 'Kararehe', icon: '🐱' },
+                    { id: 'people', name: 'People', maori: 'Tangata', icon: '👨‍👩‍👧‍👦' },
+                    { id: 'places', name: 'Places', maori: 'Wāhi', icon: '🏠' },
+                  ].map(topic => {
+                    const isWinner = online.game?.turnOrderWinner !== undefined &&
+                      online.game.players[online.game.turnOrderWinner]?.id === online.playerId;
+
+                    return (
+                      <button
+                        key={topic.id}
+                        onClick={() => isWinner && online.selectTopic(topic.id)}
+                        disabled={!isWinner}
+                        className={`
+                          p-4 rounded-xl flex flex-col items-center gap-2
+                          transition-all transform
+                          ${isWinner
+                            ? 'bg-gradient-to-br from-teal-500 to-teal-700 hover:scale-105 cursor-pointer shadow-md hover:shadow-lg'
+                            : 'bg-gray-700/50 cursor-not-allowed opacity-60'
+                          }
+                        `}
+                      >
+                        <span className="text-4xl">{topic.icon}</span>
+                        <span className="text-white font-bold">{topic.name}</span>
+                        <span className="text-teal-200 text-sm">{topic.maori}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ===== PLAYING PHASE (and other phases like verification, turnEnd) ===== */}
+            {online.game.phase !== 'topicSelect' && (
+              <>
+                {/* Turn indicator - compact */}
+                <div className="mb-2 flex items-center justify-between text-xs flex-shrink-0">
+                  <span className="text-teal-400">{online.game.phase}</span>
+                  <span className={online.isMyTurn ? 'text-amber-400 font-bold' : 'text-gray-500'}>
+                    {online.isMyTurn ? '🎯 Your turn!' : `${online.game.players[online.game.currentPlayerIndex]?.name}'s turn`}
+                  </span>
+                </div>
+
+                <GameTable
               players={online.game.players.map((p, idx) => ({
                 id: p.id,
                 name: p.name,
@@ -762,11 +808,11 @@ export default function RoomPage() {
                   }}
                 />
               }
-              currentTopic={undefined}
+              currentTopic={online.game.currentTopic}
             />
 
             {/* Hand - positioned below the table */}
-            <div className="-mt-16 bg-white/95 rounded-xl shadow-lg p-3 relative z-10">
+            <div className="mt-3 bg-white/95 rounded-xl shadow-lg p-3 relative z-10">
               {/* Hand header with actions */}
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-gray-700">
@@ -818,8 +864,10 @@ export default function RoomPage() {
                 </div>
               )}
             </div>
+              </>
+            )}
 
-            {/* Floating Voice + Chat Controls */}
+            {/* Floating Voice + Chat Controls - visible in all game phases */}
             <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
               {/* Voice Controls */}
               <VoiceControls
