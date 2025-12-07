@@ -363,8 +363,8 @@ wss.on('connection', (ws: WebSocket) => {
     }
   });
 
-  ws.on('close', () => {
-    console.log(`Client disconnected: ${socketId}`);
+  ws.on('close', (code, reason) => {
+    console.log(`Client disconnected: ${socketId} (code: ${code}, reason: ${reason?.toString() || 'none'})`);
 
     // Clean up voice chat
     const roomCodeForVoice = gameManager.getRoomCodeBySocket(socketId);

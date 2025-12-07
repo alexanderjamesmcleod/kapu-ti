@@ -239,13 +239,26 @@ export function useVoiceChat({
 
   // Handle incoming voice signal from another peer
   const handleVoiceSignal = useCallback((fromPlayerId: string, signal: unknown) => {
-    console.log(`[Voice] Received signal from ${fromPlayerId}`);
+    const signalData = signal as Peer.SignalData;
+    console.log(`[Voice] Received signal from ${fromPlayerId}, type: ${signalData.type || 'candidate'}`);
 
     const existingPeer = peersRef.current.get(fromPlayerId);
 
     if (existingPeer) {
+      // Check if this is an answer to our offer - if we're already stable, ignore it
+      // This handles the "glare" case where both sides try to connect simultaneously
+      try {
+        const peerConnection = (existingPeer.peer as unknown as { _pc?: RTCPeerConnection })._pc;
+        if (peerConnection && signalData.type === 'answer' && peerConnection.signalingState === 'stable') {
+          console.log(`[Voice] Ignoring answer from ${fromPlayerId} - already stable (glare resolved)`);
+          return;
+        }
+      } catch {
+        // If we can't check state, just try to signal anyway
+      }
+
       // We have a peer, pass the signal
-      existingPeer.peer.signal(signal as Peer.SignalData);
+      existingPeer.peer.signal(signalData);
     } else {
       // No peer yet - queue the signal
       console.log(`[Voice] Queuing signal from ${fromPlayerId} (no peer yet)`);
@@ -263,10 +276,14 @@ export function useVoiceChat({
 
     console.log(`[Voice] Peer joined: ${peerName}`);
 
+    // Deterministic initiator: lower ID always initiates to prevent "glare"
+    // This ensures only one side creates an offer, avoiding the race condition
+    const shouldInitiate = playerId! < peerId;
+    console.log(`[Voice] Should initiate to ${peerName}: ${shouldInitiate} (my ID: ${playerId?.slice(0,4)}, their ID: ${peerId.slice(0,4)})`);
+
     try {
       const stream = await getLocalStream();
-      // We initiate connection to new peer
-      createPeer(peerId, peerName, true, stream);
+      createPeer(peerId, peerName, shouldInitiate, stream);
     } catch (err) {
       console.error('[Voice] Failed to create peer for new joiner:', err);
     }

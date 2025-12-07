@@ -116,6 +116,30 @@ interface UseOnlineGameReturn {
   setVoiceHandlers: (handlers: VoiceEventHandlers) => void;
 }
 
+// Get the default WebSocket server URL with smart detection
+function getDefaultServerUrl(): string {
+  // 1. Check env var first (set in .env.local or at build time)
+  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_WS_URL) {
+    return process.env.NEXT_PUBLIC_WS_URL;
+  }
+
+  // 2. Auto-detect based on current window location (for tunnelmole/ngrok/etc)
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Check if there's a WS URL in sessionStorage (set by user)
+    const savedUrl = sessionStorage.getItem('kaputi_ws_url');
+    if (savedUrl) {
+      return savedUrl;
+    }
+    // Default: assume WS server is on port 3002 of same host
+    // This won't work for tunnelmole since each tunnel has different subdomain
+    // User needs to enter the WS tunnel URL manually
+  }
+
+  // 3. Default for local development
+  return 'ws://localhost:3002';
+}
+
 export function useOnlineGame(): UseOnlineGameReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -252,15 +276,22 @@ export function useOnlineGame(): UseOnlineGameReturn {
   }, []);
 
   // Connect to server
-  const connect = useCallback((serverUrl: string = 'ws://localhost:3002') => {
+  const connect = useCallback((serverUrl?: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
+    }
+
+    const url = serverUrl || getDefaultServerUrl();
+
+    // Save custom URL to sessionStorage for reconnection
+    if (serverUrl && typeof window !== 'undefined') {
+      sessionStorage.setItem('kaputi_ws_url', serverUrl);
     }
 
     setConnectionState('connecting');
     setError(null);
 
-    const ws = new WebSocket(serverUrl);
+    const ws = new WebSocket(url);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -280,11 +311,13 @@ export function useOnlineGame(): UseOnlineGameReturn {
 
     ws.onclose = () => {
       setConnectionState('disconnected');
-      setLobbyState('idle');
-      setRoomCode(null);
-      setPlayerId(null);
-      setPlayers([]);
-      setGame(null);
+      // DON'T wipe game state on disconnect - allows reconnect to same game
+      // Only wipe lobby state so user knows they're disconnected
+      // setLobbyState('idle');  // Keep lobbyState to preserve game view
+      // setRoomCode(null);      // Keep roomCode for potential reconnect
+      // setPlayerId(null);      // Keep playerId for potential reconnect
+      // setPlayers([]);         // Keep players for display
+      // setGame(null);          // Keep game so UI doesn't blank out
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
       }

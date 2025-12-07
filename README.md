@@ -55,19 +55,48 @@ npm run dev
 3. **Join Room**: Enter your name → Enter code → Click "Join"
 4. All players mark "Ready" → Host clicks "Start Game"
 
-### External Access (tunnelmole/ngrok)
+### Playing Over the Internet (cloudflared)
 
-To play with friends outside your network:
+Play with friends anywhere using **Cloudflare Tunnel** (free, reliable, supports WebSockets):
 
 ```bash
-# Expose WebSocket server
-tmole 3002
+# Terminal 1: Start WebSocket server
+npm run server
 
-# Expose web app
-tmole 3001
+# Terminal 2: Start Next.js app
+npm run dev
+
+# Terminal 3: Download cloudflared (first time only)
+curl -L -o /tmp/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+chmod +x /tmp/cloudflared
+
+# Terminal 3: Expose WebSocket server (port 3002)
+/tmp/cloudflared tunnel --url http://localhost:3002
+# → Gives you: https://random-words.trycloudflare.com
+
+# Terminal 4: Expose web app (port 3000)
+/tmp/cloudflared tunnel --url http://localhost:3000
+# → Gives you: https://other-words.trycloudflare.com
 ```
 
-Update the server URL in the lobby to your tunnel URL (e.g., `wss://xxxx.tunnelmole.net`)
+**To play:**
+1. Host: Connect to server, then click **"Copy Share Link"** (appears when connected)
+2. Share that link with friends - it includes the WebSocket URL!
+3. Friends open the link → Auto-connects → Ready to play!
+
+**Manual setup (if needed):**
+1. Share the frontend URL: `https://other-words.trycloudflare.com/play/room`
+2. Everyone clicks **"Server Settings"** and enters: `wss://random-words.trycloudflare.com`
+3. Click **Connect** → Should show 🟢 Connected
+
+**Tips:**
+- URLs are random but memorable (e.g., `brand-configure-ranges-boolean`)
+- No password page or account needed
+- Both tunnels must stay running while playing
+- cloudflared is much more reliable than localtunnel
+
+> **Alternative:** localtunnel (`npx localtunnel --port 3002`) also works but can be unreliable.
+> ⚠️ **Note:** Tunnelmole does NOT support WebSockets.
 
 ## Game Rules
 

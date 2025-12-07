@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GameTable, CardHand, MultiplayerSentenceBuilder } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
 import VoiceControls from '@/components/VoiceControls';
@@ -89,6 +89,9 @@ export default function RoomPage() {
   const [joinCode, setJoinCode] = useState('');
   const [playerName, setPlayerName] = useState(generatePlayerName());
   const [playerAvatar, setPlayerAvatar] = useState(AVATARS[0]);
+  const [serverUrl, setServerUrl] = useState('ws://localhost:3002');
+  const [showServerConfig, setShowServerConfig] = useState(false);
+  const [wsFromUrl, setWsFromUrl] = useState<string | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [isReady, setIsReady] = useState(true); // Auto-ready
@@ -131,12 +134,36 @@ export default function RoomPage() {
     }
   }, [phase, voice.isVoiceEnabled, voice.leaveVoice]);
 
-  // Connect to WebSocket when entering menu (for real multiplayer)
+  // Read ?ws= query parameter on mount
   useEffect(() => {
-    if (phase === 'menu' && online.connectionState === 'disconnected') {
-      online.connect();
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const wsParam = params.get('ws');
+      if (wsParam) {
+        setWsFromUrl(wsParam);
+        setServerUrl(wsParam);
+        // Store in sessionStorage so it persists
+        sessionStorage.setItem('kaputi_ws_url', wsParam);
+      } else {
+        // Check sessionStorage for previously set URL
+        const savedUrl = sessionStorage.getItem('kaputi_ws_url');
+        if (savedUrl) {
+          setServerUrl(savedUrl);
+        }
+      }
     }
-  }, [phase, online.connectionState, online.connect]);
+  }, []);
+
+  // Connect to WebSocket on initial mount only
+  const hasAutoConnected = useRef(false);
+  useEffect(() => {
+    if (phase === 'menu' && online.connectionState === 'disconnected' && !hasAutoConnected.current) {
+      hasAutoConnected.current = true;
+      // Use wsFromUrl if available (from query param), else serverUrl
+      const urlToUse = wsFromUrl || serverUrl;
+      online.connect(urlToUse);
+    }
+  }, [phase, online.connectionState, online.connect, serverUrl, wsFromUrl]);
 
   // When game starts (lobbyState becomes 'inGame'), go straight to playing
   // Server assigns positions - no local turn order needed
@@ -286,6 +313,74 @@ export default function RoomPage() {
         {/* Menu */}
         {phase === 'menu' && (
           <div className="space-y-4">
+            {/* Connection status */}
+            <div className={`flex items-center justify-between px-4 py-2 rounded-lg ${
+              online.connectionState === 'connected' ? 'bg-green-100' :
+              online.connectionState === 'connecting' ? 'bg-yellow-100' :
+              online.connectionState === 'error' ? 'bg-red-100' : 'bg-gray-100'
+            }`}>
+              <span className="text-sm text-gray-700">
+                {online.connectionState === 'connected' ? '🟢 Connected' :
+                 online.connectionState === 'connecting' ? '🟡 Connecting...' :
+                 online.connectionState === 'error' ? '🔴 Connection Error' : '⚪ Disconnected'}
+              </span>
+              <div className="flex gap-2">
+                {online.connectionState === 'connected' && serverUrl !== 'ws://localhost:3002' && (
+                  <button
+                    onClick={() => {
+                      const shareUrl = `${window.location.origin}${window.location.pathname}?ws=${encodeURIComponent(serverUrl)}`;
+                      navigator.clipboard.writeText(shareUrl);
+                      alert('Share link copied! Send this to friends.');
+                    }}
+                    className="text-xs text-teal-600 hover:text-teal-800 underline font-semibold"
+                  >
+                    Copy Share Link
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowServerConfig(!showServerConfig)}
+                  className="text-xs text-gray-500 hover:text-gray-700 underline"
+                >
+                  {showServerConfig ? 'Hide' : 'Server Settings'}
+                </button>
+              </div>
+            </div>
+
+            {/* Server configuration (collapsible) */}
+            {showServerConfig && (
+              <div className="bg-white rounded-xl p-4 shadow-md border-2 border-dashed border-gray-300">
+                <h2 className="font-bold text-gray-700 mb-2">Server Connection</h2>
+                <p className="text-xs text-gray-500 mb-3">
+                  For internet play: run <code className="bg-gray-100 px-1 rounded">tmole 3002</code> and paste the wss:// URL below
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={serverUrl}
+                    onChange={(e) => setServerUrl(e.target.value)}
+                    placeholder="wss://xxxx.tunnelmole.net"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      online.disconnect();
+                      // Small delay to ensure disconnect completes
+                      setTimeout(() => {
+                        online.connect(serverUrl);
+                      }, 150);
+                    }}
+                    className="px-4 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700"
+                  >
+                    Connect
+                  </button>
+                </div>
+                {online.error && (
+                  <p className="text-xs text-red-600 mt-2">{online.error}</p>
+                )}
+              </div>
+            )}
+
             {/* Player setup */}
             <div className="bg-white rounded-xl p-4 shadow-md">
               <h2 className="font-bold text-gray-700 mb-3">Your Profile</h2>
@@ -590,7 +685,21 @@ export default function RoomPage() {
         {/* Playing View */}
         {phase === 'playing' && online.game && (
           <div>
-            {/* Connection status */}
+            {/* Connection warning */}
+            {online.connectionState !== 'connected' && (
+              <div className="mb-4 px-4 py-2 bg-amber-500/30 text-amber-300 rounded-lg text-sm flex items-center justify-between">
+                <span>
+                  {online.connectionState === 'connecting' ? '🔄 Reconnecting...' : '⚠️ Disconnected - game paused'}
+                </span>
+                <button
+                  onClick={() => online.connect(serverUrl)}
+                  className="px-3 py-1 bg-amber-500 text-white rounded text-xs font-semibold hover:bg-amber-600"
+                >
+                  Reconnect
+                </button>
+              </div>
+            )}
+            {/* Connection error */}
             {online.error && (
               <div className="mb-4 px-4 py-2 bg-red-500/20 text-red-300 rounded-lg text-sm">
                 {online.error}
