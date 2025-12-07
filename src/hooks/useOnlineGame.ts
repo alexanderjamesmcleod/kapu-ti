@@ -49,10 +49,23 @@ type ServerMessage =
   | { type: 'GAME_STATE'; game: MultiplayerGame }
   | { type: 'CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'ERROR'; message: string }
-  | { type: 'PONG' };
+  | { type: 'PONG' }
+  // Voice chat messages
+  | { type: 'VOICE_SIGNAL'; fromPlayerId: string; signal: unknown }
+  | { type: 'VOICE_PEER_JOINED'; playerId: string; playerName: string }
+  | { type: 'VOICE_PEER_LEFT'; playerId: string }
+  | { type: 'VOICE_MUTE_CHANGED'; playerId: string; isMuted: boolean };
 
 export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 export type LobbyState = 'idle' | 'inRoom' | 'inGame';
+
+// Voice event handlers type
+export interface VoiceEventHandlers {
+  onVoiceSignal?: (fromPlayerId: string, signal: unknown) => void;
+  onVoicePeerJoined?: (playerId: string, playerName: string) => void;
+  onVoicePeerLeft?: (playerId: string) => void;
+  onVoiceMuteChanged?: (playerId: string, isMuted: boolean) => void;
+}
 
 interface UseOnlineGameReturn {
   // Connection state
@@ -97,11 +110,16 @@ interface UseOnlineGameReturn {
   // Chat actions
   sendChat: (content: string) => void;
   sendReaction: (emoji: string) => void;
+
+  // Voice chat support
+  sendMessage: (message: object) => void;
+  setVoiceHandlers: (handlers: VoiceEventHandlers) => void;
 }
 
 export function useOnlineGame(): UseOnlineGameReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const voiceHandlersRef = useRef<VoiceEventHandlers>({});
 
   // Connection state
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
@@ -209,6 +227,23 @@ export function useOnlineGame(): UseOnlineGameReturn {
 
         case 'PONG':
           // Heartbeat response - connection is alive
+          break;
+
+        // Voice chat messages
+        case 'VOICE_SIGNAL':
+          voiceHandlersRef.current.onVoiceSignal?.(message.fromPlayerId, message.signal);
+          break;
+
+        case 'VOICE_PEER_JOINED':
+          voiceHandlersRef.current.onVoicePeerJoined?.(message.playerId, message.playerName);
+          break;
+
+        case 'VOICE_PEER_LEFT':
+          voiceHandlersRef.current.onVoicePeerLeft?.(message.playerId);
+          break;
+
+        case 'VOICE_MUTE_CHANGED':
+          voiceHandlersRef.current.onVoiceMuteChanged?.(message.playerId, message.isMuted);
           break;
       }
     } catch (err) {
@@ -345,6 +380,11 @@ export function useOnlineGame(): UseOnlineGameReturn {
     send({ type: 'REACTION', emoji });
   }, [send]);
 
+  // Voice chat support
+  const setVoiceHandlers = useCallback((handlers: VoiceEventHandlers) => {
+    voiceHandlersRef.current = handlers;
+  }, []);
+
   return {
     // Connection state
     connectionState,
@@ -386,5 +426,9 @@ export function useOnlineGame(): UseOnlineGameReturn {
     chatMessages,
     sendChat,
     sendReaction,
+
+    // Voice chat support
+    sendMessage: send,
+    setVoiceHandlers,
   };
 }

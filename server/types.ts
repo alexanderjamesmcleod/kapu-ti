@@ -59,7 +59,19 @@ export type ClientMessage =
   | { type: 'CONFIRM_TURN_END' }
   | { type: 'CHAT'; content: string }
   | { type: 'REACTION'; emoji: string }
-  | { type: 'PING' };
+  | { type: 'PING' }
+  // Voice chat signaling
+  | { type: 'VOICE_JOIN' }
+  | { type: 'VOICE_LEAVE' }
+  | { type: 'VOICE_SIGNAL'; toPlayerId: string; signal: unknown }
+  | { type: 'VOICE_MUTE'; isMuted: boolean };
+
+// Voice signaling data (WebRTC)
+export interface VoiceSignal {
+  fromPlayerId: string;
+  toPlayerId: string;
+  signal: unknown; // simple-peer signal data
+}
 
 // Server -> Client messages
 export type ServerMessage =
@@ -72,4 +84,9 @@ export type ServerMessage =
   | { type: 'GAME_STATE'; game: import('../src/types/multiplayer.types').MultiplayerGame }
   | { type: 'CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'ERROR'; message: string }
-  | { type: 'PONG' };
+  | { type: 'PONG' }
+  // Voice chat signaling
+  | { type: 'VOICE_SIGNAL'; fromPlayerId: string; signal: unknown }
+  | { type: 'VOICE_PEER_JOINED'; playerId: string; playerName: string }
+  | { type: 'VOICE_PEER_LEFT'; playerId: string }
+  | { type: 'VOICE_MUTE_CHANGED'; playerId: string; isMuted: boolean };

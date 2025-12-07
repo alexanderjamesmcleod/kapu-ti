@@ -3,9 +3,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GameTable, CardHand, MultiplayerSentenceBuilder } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
+import VoiceControls from '@/components/VoiceControls';
 import type { TablePlayer } from '@/components/GameTable';
 import type { Card as CardType } from '@/types';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
+import { useVoiceChat } from '@/hooks/useVoiceChat';
 
 type RoomPhase = 'menu' | 'create' | 'join' | 'browse' | 'lobby' | 'spectate' | 'playing';
 
@@ -103,6 +105,31 @@ export default function RoomPage() {
 
   // Online game hook
   const online = useOnlineGame();
+
+  // Voice chat hook
+  const voice = useVoiceChat({
+    playerId: online.playerId,
+    playerName: playerName,
+    roomCode: online.roomCode,
+    sendMessage: online.sendMessage,
+  });
+
+  // Wire up voice event handlers from WebSocket to voice chat hook
+  useEffect(() => {
+    online.setVoiceHandlers({
+      onVoiceSignal: voice.handleVoiceSignal,
+      onVoicePeerJoined: voice.handlePeerJoined,
+      onVoicePeerLeft: voice.handlePeerLeft,
+      onVoiceMuteChanged: voice.handleMuteChanged,
+    });
+  }, [online.setVoiceHandlers, voice.handleVoiceSignal, voice.handlePeerJoined, voice.handlePeerLeft, voice.handleMuteChanged]);
+
+  // Leave voice when leaving room
+  useEffect(() => {
+    if (phase === 'menu' && voice.isVoiceEnabled) {
+      voice.leaveVoice();
+    }
+  }, [phase, voice.isVoiceEnabled, voice.leaveVoice]);
 
   // Connect to WebSocket when entering menu (for real multiplayer)
   useEffect(() => {
@@ -482,6 +509,18 @@ export default function RoomPage() {
               </div>
             </div>
 
+            {/* Voice Chat Controls */}
+            <div className="flex justify-center">
+              <VoiceControls
+                isVoiceEnabled={voice.isVoiceEnabled}
+                isMuted={voice.isMuted}
+                participants={voice.participants}
+                onJoinVoice={voice.joinVoice}
+                onLeaveVoice={voice.leaveVoice}
+                onToggleMute={voice.toggleMute}
+              />
+            </div>
+
             <div className="flex gap-3">
               <button onClick={() => setPhase('menu')} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300">Leave</button>
               {isHost && (
@@ -671,8 +710,19 @@ export default function RoomPage() {
               )}
             </div>
 
-            {/* Floating Chat Panel */}
-            <div className="fixed bottom-4 right-4 z-50">
+            {/* Floating Voice + Chat Controls */}
+            <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
+              {/* Voice Controls */}
+              <VoiceControls
+                isVoiceEnabled={voice.isVoiceEnabled}
+                isMuted={voice.isMuted}
+                participants={voice.participants}
+                onJoinVoice={voice.joinVoice}
+                onLeaveVoice={voice.leaveVoice}
+                onToggleMute={voice.toggleMute}
+              />
+
+              {/* Chat Panel */}
               <ChatPanel
                 messages={online.chatMessages}
                 currentPlayerId={online.playerId}

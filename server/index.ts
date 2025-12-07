@@ -15,6 +15,12 @@ const gameManager = new GameManager();
 // Track connections
 const connections = new Map<string, WebSocket>();
 
+// Track voice chat participants per room: roomCode -> Set of socketIds
+const voiceParticipants = new Map<string, Set<string>>();
+
+// Track mute state: socketId -> isMuted
+const voiceMuteState = new Map<string, boolean>();
+
 // Generate socket ID
 function generateSocketId(): string {
   return Math.random().toString(36).substring(2, 15);
@@ -222,6 +228,121 @@ wss.on('connection', (ws: WebSocket) => {
           break;
         }
 
+        case 'VOICE_JOIN': {
+          const roomCode = gameManager.getRoomCodeBySocket(socketId);
+          const playerId = gameManager.getPlayerIdBySocket(socketId);
+          const playerName = gameManager.getPlayerNameBySocket(socketId);
+          if (roomCode && playerId && playerName) {
+            // Add to voice participants
+            if (!voiceParticipants.has(roomCode)) {
+              voiceParticipants.set(roomCode, new Set());
+            }
+            const participants = voiceParticipants.get(roomCode)!;
+
+            // Notify existing voice participants about new joiner
+            for (const existingSocketId of participants) {
+              const existingWs = connections.get(existingSocketId);
+              if (existingWs) {
+                send(existingWs, {
+                  type: 'VOICE_PEER_JOINED',
+                  playerId,
+                  playerName,
+                });
+              }
+              // Also tell the new joiner about existing participants
+              const existingPlayerId = gameManager.getPlayerIdBySocket(existingSocketId);
+              const existingPlayerName = gameManager.getPlayerNameBySocket(existingSocketId);
+              if (existingPlayerId && existingPlayerName) {
+                send(ws, {
+                  type: 'VOICE_PEER_JOINED',
+                  playerId: existingPlayerId,
+                  playerName: existingPlayerName,
+                });
+              }
+            }
+
+            participants.add(socketId);
+            voiceMuteState.set(socketId, false);
+            console.log(`[${roomCode}] ${playerName} joined voice chat (${participants.size} in voice)`);
+          }
+          break;
+        }
+
+        case 'VOICE_LEAVE': {
+          const roomCode = gameManager.getRoomCodeBySocket(socketId);
+          const playerId = gameManager.getPlayerIdBySocket(socketId);
+          const playerName = gameManager.getPlayerNameBySocket(socketId);
+          if (roomCode && playerId) {
+            const participants = voiceParticipants.get(roomCode);
+            if (participants) {
+              participants.delete(socketId);
+              voiceMuteState.delete(socketId);
+
+              // Notify remaining participants
+              for (const otherSocketId of participants) {
+                const otherWs = connections.get(otherSocketId);
+                if (otherWs) {
+                  send(otherWs, { type: 'VOICE_PEER_LEFT', playerId });
+                }
+              }
+              console.log(`[${roomCode}] ${playerName} left voice chat (${participants.size} in voice)`);
+            }
+          }
+          break;
+        }
+
+        case 'VOICE_SIGNAL': {
+          // Relay WebRTC signal to target player
+          const fromPlayerId = gameManager.getPlayerIdBySocket(socketId);
+          const roomCode = gameManager.getRoomCodeBySocket(socketId);
+          if (fromPlayerId && roomCode) {
+            // Find the target player's socket
+            const participants = voiceParticipants.get(roomCode);
+            if (participants) {
+              for (const otherSocketId of participants) {
+                const otherPlayerId = gameManager.getPlayerIdBySocket(otherSocketId);
+                if (otherPlayerId === message.toPlayerId) {
+                  const targetWs = connections.get(otherSocketId);
+                  if (targetWs) {
+                    send(targetWs, {
+                      type: 'VOICE_SIGNAL',
+                      fromPlayerId,
+                      signal: message.signal,
+                    });
+                  }
+                  break;
+                }
+              }
+            }
+          }
+          break;
+        }
+
+        case 'VOICE_MUTE': {
+          const roomCode = gameManager.getRoomCodeBySocket(socketId);
+          const playerId = gameManager.getPlayerIdBySocket(socketId);
+          if (roomCode && playerId) {
+            voiceMuteState.set(socketId, message.isMuted);
+            const participants = voiceParticipants.get(roomCode);
+            if (participants) {
+              // Broadcast mute state to all voice participants
+              for (const otherSocketId of participants) {
+                if (otherSocketId !== socketId) {
+                  const otherWs = connections.get(otherSocketId);
+                  if (otherWs) {
+                    send(otherWs, {
+                      type: 'VOICE_MUTE_CHANGED',
+                      playerId,
+                      isMuted: message.isMuted,
+                    });
+                  }
+                }
+              }
+            }
+          }
+          break;
+        }
+
         default:
           // Special case: confirm turn end comes from the new current player
           // Check if the message has a different structure
@@ -244,6 +365,25 @@ wss.on('connection', (ws: WebSocket) => {
 
   ws.on('close', () => {
     console.log(`Client disconnected: ${socketId}`);
+
+    // Clean up voice chat
+    const roomCodeForVoice = gameManager.getRoomCodeBySocket(socketId);
+    const playerIdForVoice = gameManager.getPlayerIdBySocket(socketId);
+    if (roomCodeForVoice && playerIdForVoice) {
+      const participants = voiceParticipants.get(roomCodeForVoice);
+      if (participants && participants.has(socketId)) {
+        participants.delete(socketId);
+        voiceMuteState.delete(socketId);
+        // Notify remaining voice participants
+        for (const otherSocketId of participants) {
+          const otherWs = connections.get(otherSocketId);
+          if (otherWs) {
+            send(otherWs, { type: 'VOICE_PEER_LEFT', playerId: playerIdForVoice });
+          }
+        }
+      }
+    }
+
     const result = gameManager.leaveRoom(socketId);
     if (result.room && result.leftPlayerId) {
       broadcast(result.room.code, {
