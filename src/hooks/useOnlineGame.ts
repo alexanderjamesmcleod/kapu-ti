@@ -29,6 +29,16 @@ interface RoomPlayer {
   isReady: boolean;
 }
 
+// Chat message type (matches server)
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  playerName: string;
+  content: string;
+  isReaction: boolean;
+  timestamp: number;
+}
+
 type ServerMessage =
   | { type: 'ROOM_CREATED'; roomCode: string; playerId: string }
   | { type: 'ROOM_JOINED'; roomCode: string; playerId: string; players: RoomPlayer[] }
@@ -37,6 +47,7 @@ type ServerMessage =
   | { type: 'PLAYER_READY'; playerId: string; ready: boolean }
   | { type: 'GAME_STARTED'; game: MultiplayerGame; yourPlayerId: string }
   | { type: 'GAME_STATE'; game: MultiplayerGame }
+  | { type: 'CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'ERROR'; message: string }
   | { type: 'PONG' };
 
@@ -61,6 +72,9 @@ interface UseOnlineGameReturn {
   currentSentence: string;
   isMyTurn: boolean;
 
+  // Chat state
+  chatMessages: ChatMessage[];
+
   // Lobby actions
   connect: (serverUrl?: string) => void;
   disconnect: () => void;
@@ -79,6 +93,10 @@ interface UseOnlineGameReturn {
   passTurn: () => void;
   undoLastCard: () => void;
   confirmTurnEnd: () => void;
+
+  // Chat actions
+  sendChat: (content: string) => void;
+  sendReaction: (emoji: string) => void;
 }
 
 export function useOnlineGame(): UseOnlineGameReturn {
@@ -97,6 +115,9 @@ export function useOnlineGame(): UseOnlineGameReturn {
 
   // Game state
   const [game, setGame] = useState<MultiplayerGame | null>(null);
+
+  // Chat state (keep last 50 messages)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   // Computed values
   const isHost = useMemo(() => {
@@ -176,6 +197,10 @@ export function useOnlineGame(): UseOnlineGameReturn {
 
         case 'GAME_STATE':
           setGame(deserializeGame(message.game));
+          break;
+
+        case 'CHAT_MESSAGE':
+          setChatMessages(prev => [...prev.slice(-49), message.message]);
           break;
 
         case 'ERROR':
@@ -265,6 +290,7 @@ export function useOnlineGame(): UseOnlineGameReturn {
     setPlayerId(null);
     setPlayers([]);
     setGame(null);
+    setChatMessages([]);
   }, [send]);
 
   const setReady = useCallback((ready: boolean) => {
@@ -308,6 +334,17 @@ export function useOnlineGame(): UseOnlineGameReturn {
     send({ type: 'CONFIRM_TURN_END' });
   }, [send]);
 
+  // Chat actions
+  const sendChat = useCallback((content: string) => {
+    if (content.trim()) {
+      send({ type: 'CHAT', content: content.trim() });
+    }
+  }, [send]);
+
+  const sendReaction = useCallback((emoji: string) => {
+    send({ type: 'REACTION', emoji });
+  }, [send]);
+
   return {
     // Connection state
     connectionState,
@@ -344,5 +381,10 @@ export function useOnlineGame(): UseOnlineGameReturn {
     passTurn,
     undoLastCard,
     confirmTurnEnd,
+
+    // Chat
+    chatMessages,
+    sendChat,
+    sendReaction,
   };
 }

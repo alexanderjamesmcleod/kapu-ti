@@ -6,7 +6,7 @@
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { GameManager } from './game-manager';
-import type { ClientMessage, ServerMessage } from './types';
+import type { ClientMessage, ServerMessage, ChatMessage } from './types';
 import type { MultiplayerGame } from '../src/types/multiplayer.types';
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
@@ -175,6 +175,44 @@ wss.on('connection', (ws: WebSocket) => {
             send(ws, { type: 'ERROR', message: result.error });
           } else if (result) {
             broadcastGameState(result.room.code, result.game);
+          }
+          break;
+        }
+
+        case 'CHAT': {
+          const roomCode = gameManager.getRoomCodeBySocket(socketId);
+          const playerId = gameManager.getPlayerIdBySocket(socketId);
+          const playerName = gameManager.getPlayerNameBySocket(socketId);
+          if (roomCode && playerId && playerName) {
+            const chatMessage: ChatMessage = {
+              id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              playerId,
+              playerName,
+              content: message.content.slice(0, 200), // Limit message length
+              isReaction: false,
+              timestamp: Date.now(),
+            };
+            broadcast(roomCode, { type: 'CHAT_MESSAGE', message: chatMessage });
+            console.log(`[${roomCode}] ${playerName}: ${chatMessage.content}`);
+          }
+          break;
+        }
+
+        case 'REACTION': {
+          const roomCode = gameManager.getRoomCodeBySocket(socketId);
+          const playerId = gameManager.getPlayerIdBySocket(socketId);
+          const playerName = gameManager.getPlayerNameBySocket(socketId);
+          if (roomCode && playerId && playerName) {
+            const chatMessage: ChatMessage = {
+              id: `react-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              playerId,
+              playerName,
+              content: message.emoji,
+              isReaction: true,
+              timestamp: Date.now(),
+            };
+            broadcast(roomCode, { type: 'CHAT_MESSAGE', message: chatMessage });
+            console.log(`[${roomCode}] ${playerName} reacted: ${message.emoji}`);
           }
           break;
         }

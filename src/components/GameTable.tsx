@@ -245,13 +245,13 @@ export function GameTable({
         <PlayerSeat
           key={player.id}
           player={player}
-          position={getPlayerPosition(index, maxPlayers, false)}
+          position={getPlayerPosition(index, players.length, false)}
           seatIndex={index}
         />
       ))}
 
-      {/* Empty seats */}
-      {Array.from({ length: emptySeats }).map((_, index) => (
+      {/* Empty seats - only show in lobby (when onSeatClick is provided), hide during gameplay */}
+      {onSeatClick && Array.from({ length: emptySeats }).map((_, index) => (
         <PlayerSeat
           key={`empty-${index}`}
           isEmpty

@@ -311,6 +311,28 @@ export class GameManager {
     return this.socketToPlayer.get(socketId) || null;
   }
 
+  // Get room code by socket
+  getRoomCodeBySocket(socketId: string): string | null {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId) return null;
+    return this.playerToRoom.get(playerId) || null;
+  }
+
+  // Get player name by socket
+  getPlayerNameBySocket(socketId: string): string | null {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId) return null;
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return null;
+
+    const room = this.rooms.get(roomCode);
+    if (!room) return null;
+
+    const player = room.players.find(p => p.id === playerId);
+    return player?.name || null;
+  }
+
   // Get all sockets in a room
   getSocketsInRoom(roomCode: string): string[] {
     const room = this.rooms.get(roomCode);

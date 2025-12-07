@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import Link from 'next/link';
-import { GameTable, CardHand, NumberCard, TopicSelector, MultiplayerSentenceBuilder } from '@/components';
+import { GameTable, CardHand, MultiplayerSentenceBuilder } from '@/components';
+import ChatPanel from '@/components/ChatPanel';
 import type { TablePlayer } from '@/components/GameTable';
 import type { Card as CardType } from '@/types';
-import { dealTurnOrderCards, getPlayerOrder, TOPICS, type Topic, type NumberCard as NumberCardType } from '@/data';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
 
-type RoomPhase = 'menu' | 'create' | 'join' | 'browse' | 'lobby' | 'turn_order' | 'pick_topic' | 'spectate' | 'playing';
+type RoomPhase = 'menu' | 'create' | 'join' | 'browse' | 'lobby' | 'spectate' | 'playing';
 
 interface RoomSettings {
   name: string;
@@ -22,8 +21,6 @@ interface Player {
   avatar: string;
   isHost: boolean;
   isReady: boolean;
-  turnOrderCard?: NumberCardType;
-  hasRevealed?: boolean;
 }
 
 interface ActiveGame {
@@ -97,15 +94,12 @@ export default function RoomPage() {
   const [spectatorCount, setSpectatorCount] = useState(3);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
 
-  // Turn order state
-  const [turnOrderRevealed, setTurnOrderRevealed] = useState(false);
-  const [playerOrder, setPlayerOrder] = useState<number[]>([]);
-  const [topicPicker, setTopicPicker] = useState<Player | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-
   // For playing state
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const [hand, setHand] = useState<CardType[]>(DEMO_HAND);
+
+  // Chat panel state
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Online game hook
   const online = useOnlineGame();
@@ -117,68 +111,27 @@ export default function RoomPage() {
     }
   }, [phase, online.connectionState, online.connect]);
 
-  // When game starts (lobbyState becomes 'inGame'), transition to turn_order phase
-  // This handles the case for joining players who don't click the "Start Game" button
+  // When game starts (lobbyState becomes 'inGame'), go straight to playing
+  // Server assigns positions - no local turn order needed
   useEffect(() => {
     if (online.lobbyState === 'inGame' && online.game && phase === 'lobby') {
-      // Non-host player received GAME_STARTED - deal them turn order cards
-      const cards = dealTurnOrderCards(online.game.players.length);
-      setPlayers(prev => {
-        // Use online.game.players to ensure we have all players
-        const gamePlayers = online.game!.players;
-        return gamePlayers.map((p, index) => ({
-          id: p.id,
-          name: p.name,
-          avatar: AVATARS[Math.abs(p.name.charCodeAt(0)) % AVATARS.length],
-          isHost: index === 0,
-          isReady: true,
-          turnOrderCard: cards[index],
-          hasRevealed: false,
-        }));
-      });
-      setTurnOrderRevealed(false);
-      setPhase('turn_order');
+      // Go directly to playing - seating is based on server-assigned positions
+      setPhase('playing');
     }
   }, [online.lobbyState, online.game, phase]);
 
-  // Sync game state - go to 'playing' after topic is selected
-  useEffect(() => {
-    if (online.lobbyState === 'inGame' && online.game && selectedTopic) {
-      setPhase('playing');
-    }
-  }, [online.lobbyState, online.game, selectedTopic]);
-
   // Sync online players to local state for lobby display
-  // BUT preserve turnOrderCard and hasRevealed during turn_order phase
   useEffect(() => {
     if (online.players.length > 0) {
-      setPlayers(prev => {
-        // If in turn_order or pick_topic phase, preserve local turn order state
-        if (phase === 'turn_order' || phase === 'pick_topic') {
-          return online.players.map(p => {
-            const existing = prev.find(ep => ep.id === p.id);
-            return {
-              id: p.id,
-              name: p.name,
-              avatar: AVATARS[Math.abs(p.name.charCodeAt(0)) % AVATARS.length],
-              isHost: p.isHost,
-              isReady: p.isReady,
-              turnOrderCard: existing?.turnOrderCard,
-              hasRevealed: existing?.hasRevealed ?? false,
-            };
-          });
-        }
-        // Otherwise just sync from server
-        return online.players.map(p => ({
-          id: p.id,
-          name: p.name,
-          avatar: AVATARS[Math.abs(p.name.charCodeAt(0)) % AVATARS.length],
-          isHost: p.isHost,
-          isReady: p.isReady,
-        }));
-      });
+      setPlayers(online.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        avatar: AVATARS[Math.abs(p.name.charCodeAt(0)) % AVATARS.length],
+        isHost: p.isHost,
+        isReady: p.isReady,
+      })));
     }
-  }, [online.players, phase]);
+  }, [online.players]);
 
   // Sync room code from online state
   useEffect(() => {
@@ -235,85 +188,12 @@ export default function RoomPage() {
     // Player list will be synced from online.players
   }, [isReady, online]);
 
-  // Start game - deal turn order cards
+  // Start game - server handles everything
   const startGame = useCallback(() => {
-    // Also trigger the online game start (skips turn order for now, goes straight to game)
     online.startGame();
+    // useEffect will transition to 'playing' when online.lobbyState becomes 'inGame'
+  }, [online]);
 
-    // Deal number cards to all players (for local turn order animation)
-    const cards = dealTurnOrderCards(players.length);
-    setPlayers(prev => prev.map((player, index) => ({
-      ...player,
-      turnOrderCard: cards[index],
-      hasRevealed: false
-    })));
-    setTurnOrderRevealed(false);
-    setPhase('turn_order');
-  }, [players.length, online]);
-
-  // Handle player revealing their card
-  const handleRevealCard = useCallback((playerId: string) => {
-    setPlayers(prev => prev.map(p =>
-      p.id === playerId ? { ...p, hasRevealed: true } : p
-    ));
-  }, []);
-
-  // Check if all cards revealed, then determine order
-  useEffect(() => {
-    if (phase === 'turn_order' && players.every(p => p.hasRevealed)) {
-      // Wait a moment then show results
-      const timer = setTimeout(() => {
-        const cards = players.map(p => p.turnOrderCard!);
-        const order = getPlayerOrder(cards);
-        setPlayerOrder(order);
-        setTurnOrderRevealed(true);
-
-        // The first player (highest card) picks the topic
-        const pickerIndex = order[0];
-        setTopicPicker(players[pickerIndex]);
-
-        // After 2 seconds, move to topic selection
-        setTimeout(() => {
-          setPhase('pick_topic');
-        }, 2000);
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [phase, players]);
-
-  // Handle topic selection
-  const handleSelectTopic = useCallback((topic: Topic) => {
-    setSelectedTopic(topic);
-    // Wait briefly then start game
-    setTimeout(() => {
-      setPhase('playing');
-    }, 500);
-  }, []);
-
-  // Simulate bots revealing their cards
-  useEffect(() => {
-    if (phase === 'turn_order') {
-      const botPlayers = players.filter(p => !isSelf(p.id) && !p.hasRevealed);
-      botPlayers.forEach((bot, index) => {
-        // Stagger reveals
-        setTimeout(() => {
-          handleRevealCard(bot.id);
-        }, 1000 + (index * 500));
-      });
-    }
-  }, [phase, handleRevealCard, players]);
-
-  // Simulate bot selecting topic
-  useEffect(() => {
-    if (phase === 'pick_topic' && topicPicker && !isSelf(topicPicker.id) && !selectedTopic) {
-      const timer = setTimeout(() => {
-        const randomTopic = TOPICS[Math.floor(Math.random() * TOPICS.length)];
-        handleSelectTopic(randomTopic);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [phase, topicPicker, selectedTopic, handleSelectTopic]);
 
   // Helper to check if a player is self
   const isSelf = (playerId: string) => playerId === online.playerId;
@@ -344,7 +224,7 @@ export default function RoomPage() {
   );
 
   // Check if we're in a full-screen game phase
-  const isGamePhase = ['spectate', 'playing', 'turn_order', 'pick_topic'].includes(phase);
+  const isGamePhase = ['spectate', 'playing'].includes(phase);
 
   return (
     <div className={`min-h-screen p-4 ${
@@ -366,8 +246,6 @@ export default function RoomPage() {
             <h1 className={`text-2xl font-bold ${isGamePhase ? 'text-white' : 'text-teal-800'}`}>
               {phase === 'spectate' ? '👁 Spectating' :
                phase === 'playing' ? '🎮 Playing' :
-               phase === 'turn_order' ? '🎴 Turn Order' :
-               phase === 'pick_topic' ? '🎯 Topic' :
                'Online'}
             </h1>
             {roomCode && (
@@ -616,109 +494,18 @@ export default function RoomPage() {
                 </button>
               )}
             </div>
-          </div>
-        )}
 
-        {/* Turn Order Phase */}
-        {phase === 'turn_order' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 shadow-md text-center">
-              <h2 className="text-2xl font-bold text-white mb-1">🎴 Turn Order</h2>
-              <p className="text-amber-100">
-                {turnOrderRevealed
-                  ? `${topicPicker?.name} has the highest card!`
-                  : 'Tap your card to reveal your number'
-                }
-              </p>
-            </div>
-
-            {/* Cards Display */}
-            <div className="flex flex-wrap justify-center gap-4">
-              {players.map((player, index) => (
-                <div key={player.id} className="flex flex-col items-center gap-2">
-                  {/* Player avatar */}
-                  <div className={`w-12 h-12 rounded-full border-3 flex items-center justify-center text-2xl
-                                  ${turnOrderRevealed && playerOrder[0] === index
-                                    ? 'border-amber-400 bg-amber-50 ring-2 ring-amber-300'
-                                    : 'border-gray-300 bg-white'
-                                  }`}>
-                    {player.avatar}
-                  </div>
-                  <span className={`text-sm font-semibold ${isSelf(player.id) ? 'text-teal-600' : 'text-gray-700'}`}>
-                    {player.name}
-                    {isSelf(player.id) && ' (You)'}
-                  </span>
-
-                  {/* Number card */}
-                  {player.turnOrderCard && (
-                    <NumberCard
-                      card={player.turnOrderCard}
-                      size="md"
-                      revealed={player.hasRevealed}
-                      isHighest={turnOrderRevealed && playerOrder[0] === index}
-                      onClick={isSelf(player.id) && !player.hasRevealed
-                        ? () => handleRevealCard(player.id)
-                        : undefined
-                      }
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Status message */}
-            <div className="text-center">
-              {!players.find(p => isSelf(p.id))?.hasRevealed ? (
-                <p className="text-lg font-semibold text-amber-600 animate-pulse">
-                  👆 Tap your card to reveal!
-                </p>
-              ) : !turnOrderRevealed ? (
-                <p className="text-gray-500">
-                  Waiting for others to reveal... ({players.filter(p => p.hasRevealed).length}/{players.length})
-                </p>
-              ) : (
-                <p className="text-lg font-semibold text-teal-600">
-                  {topicPicker?.name} picks the topic! 🎯
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Topic Selection Phase */}
-        {phase === 'pick_topic' && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-4 shadow-md text-center">
-              <h2 className="text-2xl font-bold text-white mb-1">🎯 Pick a Topic</h2>
-              <p className="text-purple-100">
-                {topicPicker && isSelf(topicPicker.id)
-                  ? 'You have the highest card! Choose a topic for this round.'
-                  : `${topicPicker?.name} is choosing the topic...`
-                }
-              </p>
-            </div>
-
-            {topicPicker && isSelf(topicPicker.id) ? (
-              <TopicSelector
-                onSelectTopic={handleSelectTopic}
-                selectedTopicId={selectedTopic?.id}
+            {/* Chat Panel for lobby */}
+            <div className="mt-4">
+              <ChatPanel
+                messages={online.chatMessages}
+                currentPlayerId={online.playerId}
+                onSendMessage={online.sendChat}
+                onSendReaction={online.sendReaction}
+                isCollapsed={!isChatOpen}
+                onToggleCollapse={() => setIsChatOpen(!isChatOpen)}
               />
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4 animate-bounce">🤔</div>
-                <p className="text-gray-600 text-lg">
-                  {topicPicker?.avatar} {topicPicker?.name} is thinking...
-                </p>
-              </div>
-            )}
-
-            {selectedTopic && (
-              <div className="bg-teal-50 rounded-xl p-4 text-center animate-pulse">
-                <span className="text-3xl">{selectedTopic.icon}</span>
-                <p className="text-lg font-bold text-teal-700">{selectedTopic.name}</p>
-                <p className="text-teal-600">{selectedTopic.maori}</p>
-              </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -827,11 +614,7 @@ export default function RoomPage() {
                   }}
                 />
               }
-              currentTopic={selectedTopic ? {
-                icon: selectedTopic.icon,
-                name: selectedTopic.name,
-                maori: selectedTopic.maori
-              } : undefined}
+              currentTopic={undefined}
             />
 
             {/* Hand - positioned below the table */}
@@ -886,6 +669,18 @@ export default function RoomPage() {
                   Waiting for {online.game.players[online.game.currentPlayerIndex]?.name}...
                 </div>
               )}
+            </div>
+
+            {/* Floating Chat Panel */}
+            <div className="fixed bottom-4 right-4 z-50">
+              <ChatPanel
+                messages={online.chatMessages}
+                currentPlayerId={online.playerId}
+                onSendMessage={online.sendChat}
+                onSendReaction={online.sendReaction}
+                isCollapsed={!isChatOpen}
+                onToggleCollapse={() => setIsChatOpen(!isChatOpen)}
+              />
             </div>
           </div>
         )}

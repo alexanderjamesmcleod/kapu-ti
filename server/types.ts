@@ -32,6 +32,16 @@ export interface Room {
   hostId: string;
 }
 
+// Chat message
+export interface ChatMessage {
+  id: string;
+  playerId: string;
+  playerName: string;
+  content: string;
+  isReaction: boolean;  // true for quick reactions (emoji only)
+  timestamp: number;
+}
+
 // Client -> Server messages
 export type ClientMessage =
   | { type: 'CREATE_ROOM'; playerName: string }
@@ -47,6 +57,8 @@ export type ClientMessage =
   | { type: 'PASS_TURN' }
   | { type: 'UNDO' }
   | { type: 'CONFIRM_TURN_END' }
+  | { type: 'CHAT'; content: string }
+  | { type: 'REACTION'; emoji: string }
   | { type: 'PING' };
 
 // Server -> Client messages
@@ -58,5 +70,6 @@ export type ServerMessage =
   | { type: 'PLAYER_READY'; playerId: string; ready: boolean }
   | { type: 'GAME_STARTED'; game: import('../src/types/multiplayer.types').MultiplayerGame; yourPlayerId: string }
   | { type: 'GAME_STATE'; game: import('../src/types/multiplayer.types').MultiplayerGame }
+  | { type: 'CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'ERROR'; message: string }
   | { type: 'PONG' };
