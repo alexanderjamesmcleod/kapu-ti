@@ -22,6 +22,9 @@ import {
   selectTopic,
 } from './game-logic';
 
+// Bot socket ID prefix - used to identify bot players
+const BOT_PREFIX = 'bot-';
+
 export class GameManager {
   private rooms: Map<string, Room> = new Map();
   private playerToRoom: Map<string, string> = new Map();
@@ -188,7 +191,7 @@ export class GameManager {
     const bot: RoomPlayer = {
       id: generateId(),
       name,
-      socketId: `bot-${Date.now()}`, // Fake socket ID for bots
+      socketId: `${BOT_PREFIX}${Date.now()}`, // Fake socket ID for bots
       isHost: false,
       isReady: true, // Bots are always ready
     };
@@ -305,7 +308,7 @@ export class GameManager {
     const selectorPlayer = room.players.find(p => p.id === selectorPlayerId);
 
     // Only process if selector is a bot
-    if (!selectorPlayer || !selectorPlayer.socketId.startsWith('bot-')) return null;
+    if (!selectorPlayer || !selectorPlayer.socketId.startsWith(BOT_PREFIX)) return null;
 
     // Pick a random topic
     const topicIds = ['food', 'feelings', 'actions', 'animals', 'people', 'places'];
@@ -333,7 +336,7 @@ export class GameManager {
     const currentPlayer = room.players.find(p => p.id === currentPlayerId);
 
     // Only process if current player is a bot
-    if (!currentPlayer || !currentPlayer.socketId.startsWith('bot-')) return null;
+    if (!currentPlayer || !currentPlayer.socketId.startsWith(BOT_PREFIX)) return null;
 
     // For now, bots just pass their turn (simple AI)
     const result = passTurn(room.game, currentPlayerId);
@@ -367,7 +370,7 @@ export class GameManager {
 
     // Find all bot players who haven't voted yet
     const botPlayers = room.players.filter(p =>
-      p.socketId.startsWith('bot-') &&
+      p.socketId.startsWith(BOT_PREFIX) &&
       p.id !== currentPlayerId &&
       !room.game!.verificationVotes.some(v => v.playerId === p.id)
     );
@@ -470,7 +473,7 @@ export class GameManager {
 
     for (const [code, room] of this.rooms.entries()) {
       const timeSinceActivity = now - room.lastActivity;
-      const hasOnlyBots = room.players.every(p => p.socketId.startsWith('bot-'));
+      const hasOnlyBots = room.players.every(p => p.socketId.startsWith(BOT_PREFIX));
       const isEmpty = room.players.length === 0;
 
       // Delete if:
@@ -483,7 +486,7 @@ export class GameManager {
         // Clean up player mappings
         for (const player of room.players) {
           this.playerToRoom.delete(player.id);
-          if (!player.socketId.startsWith('bot-')) {
+          if (!player.socketId.startsWith(BOT_PREFIX)) {
             this.socketToPlayer.delete(player.socketId);
           }
         }
@@ -502,7 +505,7 @@ export class GameManager {
 
     for (const room of this.rooms.values()) {
       if (room.game) activeGames++;
-      totalPlayers += room.players.filter(p => !p.socketId.startsWith('bot-')).length;
+      totalPlayers += room.players.filter(p => !p.socketId.startsWith(BOT_PREFIX)).length;
     }
 
     return {

@@ -555,15 +555,6 @@ export function undoLastCard(
   return { success: true, game: newGame };
 }
 
-// Get current sentence from table slots
-export function getSentenceFromSlots(slots: TableSlot[]): string {
-  return slots
-    .sort((a, b) => a.position - b.position)
-    .map(slot => slot.cards[slot.cards.length - 1]?.maori || '')
-    .filter(Boolean)
-    .join(' ');
-}
-
 // Sanitize game state for a specific player (hide other players' hands)
 export function sanitizeGameForPlayer(game: MultiplayerGame, playerId: string): MultiplayerGame {
   return {

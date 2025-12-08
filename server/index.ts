@@ -254,6 +254,16 @@ wss.on('connection', (ws: WebSocket) => {
           break;
         }
 
+        case 'CONFIRM_TURN_END': {
+          const result = gameManager.confirmTurnEnd(socketId);
+          if ('error' in result) {
+            send(ws, { type: 'ERROR', message: result.error });
+          } else {
+            broadcastGameState(result.room.code, result.game);
+          }
+          break;
+        }
+
         case 'CHAT': {
           const roomCode = gameManager.getRoomCodeBySocket(socketId);
           const playerId = gameManager.getPlayerIdBySocket(socketId);
@@ -413,17 +423,7 @@ wss.on('connection', (ws: WebSocket) => {
         }
 
         default:
-          // Special case: confirm turn end comes from the new current player
-          // Check if the message has a different structure
-          const anyMsg = message as { type: string };
-          if (anyMsg.type === 'CONFIRM_TURN_END') {
-            const result = gameManager.confirmTurnEnd(socketId);
-            if ('error' in result) {
-              send(ws, { type: 'ERROR', message: result.error });
-            } else {
-              broadcastGameState(result.room.code, result.game);
-            }
-          }
+          console.log(`[${socketId}] Unknown message type:`, (message as { type: string }).type);
           break;
       }
     } catch (error) {
