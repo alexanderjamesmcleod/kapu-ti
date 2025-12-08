@@ -83,6 +83,7 @@ gameManager.setTurnTimerCallbacks(
     
     // Broadcast updated game state
     if (room.game) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { broadcastGameState } = require('./handlers');
       const dummyCtx = { gameManager, connections, voiceParticipants, voiceMuteState } as HandlerContext;
       broadcastGameState(dummyCtx, roomCode, room.game);
@@ -108,6 +109,7 @@ gameManager.setTurnTimerCallbacks(
     console.log(`[Topic Timeout] Broadcasting auto-selected topic for room ${roomCode}`);
     
     // Broadcast updated game state
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { broadcastGameState } = require('./handlers');
     const dummyCtx = { gameManager, connections, voiceParticipants, voiceMuteState } as HandlerContext;
     broadcastGameState(dummyCtx, roomCode, room.game);
@@ -144,6 +146,7 @@ wss.on('connection', (ws: WebSocket) => {
               setTimeout(() => {
                 const topicResult = gameManager.processBotTopicSelection(result.roomCode);
                 if (topicResult) {
+                  // eslint-disable-next-line @typescript-eslint/no-require-imports
                   const { broadcastGameState } = require('./handlers');
                   broadcastGameState(ctx, result.roomCode, topicResult.game);
                 }

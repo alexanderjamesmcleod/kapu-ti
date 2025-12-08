@@ -691,8 +691,8 @@ export function getModuleById(id: string): Module | undefined {
 }
 
 export function getLessonById(lessonId: string): Lesson | undefined {
-  for (const module of CURRICULUM) {
-    const lesson = module.lessons.find(l => l.id === lessonId);
+  for (const currModule of CURRICULUM) {
+    const lesson = currModule.lessons.find(l => l.id === lessonId);
     if (lesson) return lesson;
   }
   return undefined;
@@ -721,10 +721,10 @@ export function getNextLesson(currentLessonId: string): Lesson | undefined {
   const currentLesson = getLessonById(currentLessonId);
   if (!currentLesson) return undefined;
 
-  const module = getModuleById(currentLesson.module_id);
-  if (!module) return undefined;
+  const currModule = getModuleById(currentLesson.module_id);
+  if (!currModule) return undefined;
 
-  const sortedLessons = [...module.lessons].sort((a, b) => a.order_index - b.order_index);
+  const sortedLessons = [...currModule.lessons].sort((a, b) => a.order_index - b.order_index);
   const currentIndex = sortedLessons.findIndex(l => l.id === currentLessonId);
 
   if (currentIndex === -1 || currentIndex === sortedLessons.length - 1) {
@@ -741,10 +741,10 @@ export function getPreviousLesson(currentLessonId: string): Lesson | undefined {
   const currentLesson = getLessonById(currentLessonId);
   if (!currentLesson) return undefined;
 
-  const module = getModuleById(currentLesson.module_id);
-  if (!module) return undefined;
+  const currModule = getModuleById(currentLesson.module_id);
+  if (!currModule) return undefined;
 
-  const sortedLessons = [...module.lessons].sort((a, b) => a.order_index - b.order_index);
+  const sortedLessons = [...currModule.lessons].sort((a, b) => a.order_index - b.order_index);
   const currentIndex = sortedLessons.findIndex(l => l.id === currentLessonId);
 
   if (currentIndex <= 0) {

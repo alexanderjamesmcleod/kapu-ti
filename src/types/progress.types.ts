@@ -25,7 +25,7 @@ export interface LessonAttempt {
   timeSpentSeconds?: number;
   completed: boolean;
   masteryAchieved: boolean;
-  mistakes: any[];
+  mistakes: Array<{ cardId: string; expected: string; actual: string }>;
   createdAt: Date;
 }
 

@@ -6,7 +6,7 @@ export interface Card {
   english: string;
   type: string;
   color: string;
-  [key: string]: any; // Allow additional properties
+  [key: string]: string | number | boolean | undefined; // Allow additional properties
 }
 
 // Validator-specific challenge input (simpler than full Challenge from lesson.types)

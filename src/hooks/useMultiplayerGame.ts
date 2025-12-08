@@ -229,6 +229,104 @@ export function useMultiplayerGame() {
     });
   }, [game]);
 
+  // Find next active player - defined before vote callback to avoid hoisting issues
+  function findNextActivePlayer(players: Player[], currentIdx: number): number {
+    let nextIdx = (currentIdx + 1) % players.length;
+    while (!players[nextIdx].isActive) {
+      nextIdx = (nextIdx + 1) % players.length;
+    }
+    return nextIdx;
+  }
+
+  // Handle successful turn - defined before vote callback to avoid hoisting issues
+  function handleTurnSuccess(gameState: MultiplayerGame): MultiplayerGame {
+    const currentPlayerIdx = gameState.currentPlayerIndex;
+    const player = gameState.players[currentPlayerIdx];
+
+    // Check if player emptied their hand
+    if (player.hand.length === 0) {
+      const newPlayers = [...gameState.players];
+      newPlayers[currentPlayerIdx] = { ...player, isActive: false };
+
+      const newWinners = [...gameState.winnersInOrder, player.id];
+
+      // Check if game is over (only 1 active player left)
+      const remainingActive = newPlayers.filter(p => p.isActive);
+
+      if (remainingActive.length === 1) {
+        return {
+          ...gameState,
+          players: newPlayers,
+          winnersInOrder: newWinners,
+          loserId: remainingActive[0].id,
+          phase: 'finished',
+          turnState: createInitialTurnState(),
+        };
+      }
+
+      // Move to next active player
+      return {
+        ...gameState,
+        players: newPlayers,
+        winnersInOrder: newWinners,
+        currentPlayerIndex: findNextActivePlayer(newPlayers, currentPlayerIdx),
+        phase: 'turnEnd',
+        turnState: createInitialTurnState(),
+      };
+    }
+
+    // Player draws 1 card
+    const newDrawPile = [...gameState.drawPile];
+    const drawnCard = newDrawPile.shift();
+
+    const newPlayers = [...gameState.players];
+    if (drawnCard) {
+      newPlayers[currentPlayerIdx] = {
+        ...player,
+        hand: [...player.hand, drawnCard],
+      };
+    }
+
+    return {
+      ...gameState,
+      players: newPlayers,
+      drawPile: newDrawPile,
+      currentPlayerIndex: findNextActivePlayer(gameState.players, currentPlayerIdx),
+      phase: 'turnEnd',
+      turnState: createInitialTurnState(),
+      verificationVotes: [],
+    };
+  }
+
+  // Handle failed verification (pickup all cards!) - defined before vote callback to avoid hoisting issues
+  function handleTurnFailure(gameState: MultiplayerGame): MultiplayerGame {
+    const currentPlayerIdx = gameState.currentPlayerIndex;
+    const player = gameState.players[currentPlayerIdx];
+
+    // Collect ALL cards from table
+    const tableCards = gameState.tableSlots.flatMap(slot => slot.cards);
+
+    // Add to player's hand
+    const newPlayers = [...gameState.players];
+    newPlayers[currentPlayerIdx] = {
+      ...player,
+      hand: [...player.hand, ...tableCards],
+    };
+
+    // Reset table to starting pattern
+    const newSlots = createInitialSlots(gameState.startingPattern);
+
+    return {
+      ...gameState,
+      players: newPlayers,
+      tableSlots: newSlots,
+      currentPlayerIndex: findNextActivePlayer(gameState.players, currentPlayerIdx),
+      phase: 'turnEnd',
+      turnState: createInitialTurnState(),
+      verificationVotes: [],
+    };
+  }
+
   // Vote on verification
   const vote = useCallback((playerId: string, approved: boolean) => {
     if (!game || game.phase !== 'verification') return;
@@ -258,104 +356,6 @@ export function useMultiplayerGame() {
       return { ...prev, verificationVotes: newVotes };
     });
   }, [game]);
-
-  // Handle successful turn
-  function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
-    const currentPlayerIdx = game.currentPlayerIndex;
-    const player = game.players[currentPlayerIdx];
-
-    // Check if player emptied their hand
-    if (player.hand.length === 0) {
-      const newPlayers = [...game.players];
-      newPlayers[currentPlayerIdx] = { ...player, isActive: false };
-
-      const newWinners = [...game.winnersInOrder, player.id];
-
-      // Check if game is over (only 1 active player left)
-      const remainingActive = newPlayers.filter(p => p.isActive);
-
-      if (remainingActive.length === 1) {
-        return {
-          ...game,
-          players: newPlayers,
-          winnersInOrder: newWinners,
-          loserId: remainingActive[0].id,
-          phase: 'finished',
-          turnState: createInitialTurnState(),
-        };
-      }
-
-      // Move to next active player
-      return {
-        ...game,
-        players: newPlayers,
-        winnersInOrder: newWinners,
-        currentPlayerIndex: findNextActivePlayer(newPlayers, currentPlayerIdx),
-        phase: 'turnEnd',
-        turnState: createInitialTurnState(),
-      };
-    }
-
-    // Player draws 1 card
-    const newDrawPile = [...game.drawPile];
-    const drawnCard = newDrawPile.shift();
-
-    const newPlayers = [...game.players];
-    if (drawnCard) {
-      newPlayers[currentPlayerIdx] = {
-        ...player,
-        hand: [...player.hand, drawnCard],
-      };
-    }
-
-    return {
-      ...game,
-      players: newPlayers,
-      drawPile: newDrawPile,
-      currentPlayerIndex: findNextActivePlayer(game.players, currentPlayerIdx),
-      phase: 'turnEnd',
-      turnState: createInitialTurnState(),
-      verificationVotes: [],
-    };
-  }
-
-  // Handle failed verification (pickup all cards!)
-  function handleTurnFailure(game: MultiplayerGame): MultiplayerGame {
-    const currentPlayerIdx = game.currentPlayerIndex;
-    const player = game.players[currentPlayerIdx];
-
-    // Collect ALL cards from table
-    const tableCards = game.tableSlots.flatMap(slot => slot.cards);
-
-    // Add to player's hand
-    const newPlayers = [...game.players];
-    newPlayers[currentPlayerIdx] = {
-      ...player,
-      hand: [...player.hand, ...tableCards],
-    };
-
-    // Reset table to starting pattern
-    const newSlots = createInitialSlots(game.startingPattern);
-
-    return {
-      ...game,
-      players: newPlayers,
-      tableSlots: newSlots,
-      currentPlayerIndex: findNextActivePlayer(game.players, currentPlayerIdx),
-      phase: 'turnEnd',
-      turnState: createInitialTurnState(),
-      verificationVotes: [],
-    };
-  }
-
-  // Find next active player
-  function findNextActivePlayer(players: Player[], currentIdx: number): number {
-    let nextIdx = (currentIdx + 1) % players.length;
-    while (!players[nextIdx].isActive) {
-      nextIdx = (nextIdx + 1) % players.length;
-    }
-    return nextIdx;
-  }
 
   // Pass turn (draw 1 card, don't play)
   const passTurn = useCallback(() => {

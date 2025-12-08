@@ -9,7 +9,7 @@ export interface MultiplayerGame {
   maxPlayers: number;
   status: 'waiting' | 'active' | 'completed';
   currentTurnUserId?: string;
-  gameState: any;
+  gameState: Record<string, unknown>;
   winnerId?: string;
   scores: Record<string, number>;
   createdAt: Date;

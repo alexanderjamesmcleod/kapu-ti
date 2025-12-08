@@ -126,12 +126,12 @@ export default function PlayPage() {
     [currentChallenge]
   );
 
-  // Initialize placed cards array based on pattern
-  useMemo(() => {
+  // Initialize placed cards array when slot count changes
+  useEffect(() => {
     if (placedCards.length !== slotColors.length) {
       setPlacedCards(new Array(slotColors.length).fill(null));
     }
-  }, [slotColors.length, placedCards.length]);
+  }, [slotColors.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle card selection from hand
   const handleSelectCard = useCallback((card: CardType) => {

@@ -92,34 +92,18 @@ export function CardHand({
               ))}
             </div>
           ) : (
-            <>
-              {/* Desktop: flex wrap. Mobile: horizontal scroll */}
-              <div className="hidden sm:flex flex-wrap gap-2 justify-center">
-                {cards.map((card) => (
-                  <Card
-                    key={card.id}
-                    card={card}
-                    selected={selectedCardId === card.id}
-                    onClick={isCurrentPlayer ? onSelectCard : undefined}
-                    size="md"
-                    disabled={!isCurrentPlayer}
-                  />
-                ))}
-              </div>
-              {/* Mobile: horizontal scroll with smaller cards */}
-              <div className="sm:hidden card-hand-scroll gap-2 px-2">
-                {cards.map((card) => (
-                  <Card
-                    key={card.id}
-                    card={card}
-                    selected={selectedCardId === card.id}
-                    onClick={isCurrentPlayer ? onSelectCard : undefined}
-                    size="sm"
-                    disabled={!isCurrentPlayer}
-                  />
-                ))}
-              </div>
-            </>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {cards.map((card) => (
+                <Card
+                  key={card.id}
+                  card={card}
+                  selected={selectedCardId === card.id}
+                  onClick={isCurrentPlayer ? onSelectCard : undefined}
+                  size="md"
+                  disabled={!isCurrentPlayer}
+                />
+              ))}
+            </div>
           )}
           {/* Scroll hint for mobile */}
           {cards.length > 4 && (
