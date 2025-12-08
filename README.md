@@ -178,9 +178,11 @@ Share both URLs with friends. They'll need to enter the WebSocket URL in "Server
 - [x] Bot players
 - [x] Text chat & reactions
 - [x] Voice chat (experimental)
+- [x] Sound effects (synthesized audio)
+- [x] Browse games / spectator mode
+- [x] Chill mode (disables timers)
+- [x] Card stacking (any player can modify sentence)
 - [ ] Visual indicator for disconnected players
-- [ ] Sound effects for timer warnings
-- [ ] Spectator mode
 - [ ] Tournament/ranked play
 - [ ] Mobile PWA
 - [ ] Production deployment
