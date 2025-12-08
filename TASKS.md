@@ -36,6 +36,13 @@
 - [x] Live score display in player seats
 - [x] Game finished UI with leaderboard
 
+### Vocabulary Database (2025-12-09)
+- [x] Scraped 222 words from kupu.maori.nz
+- [x] Extracted audio URLs for pronunciation (221/222 have audio)
+- [x] Created `data/vocabulary.json` with word data
+- [x] Identified verb types (transitive via passive suffixes)
+- [x] Detected possession categories (a/o) where available
+
 ---
 
 ## Current Sprint: Sentence Pattern Refactor
@@ -125,9 +132,17 @@
 
 ## Session Log
 
-### 2025-12-09
+### 2025-12-09 (Session 1)
 - Changed ports to 3100/3102 to avoid conflicts
 - Removed tunnelmole references (using cloudflared)
 - Identified table shrinking CSS issue
 - **Design Decision:** Fixed sentence patterns, max 7 cards
 - Created TASKS.md for tracking
+
+### 2025-12-09 (Session 2 - Vocabulary Scraper)
+- Used Chrome DevTools MCP to scrape kupu.maori.nz
+- Discovered audio URL pattern: `https://kupu.maori.nz/blobs/Audio/{word}.mp3`
+- Created `data/vocabulary.json` with 222 words
+- Audio URLs tested and working (HTTP 200, audio/mpeg)
+- Data includes: word, english, isVerb, possession, audioUrl
+- Created `scripts/scrape-vocabulary.ts` for future updates
