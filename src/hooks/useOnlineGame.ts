@@ -155,21 +155,18 @@ function getDefaultServerUrl(): string {
     return process.env.NEXT_PUBLIC_WS_URL;
   }
 
-  // 2. Auto-detect based on current window location (for tunnelmole/ngrok/etc)
+  // 2. Auto-detect based on current window location (for cloudflared/ngrok/etc)
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     // Check if there's a WS URL in sessionStorage (set by user)
     const savedUrl = sessionStorage.getItem('kaputi_ws_url');
     if (savedUrl) {
       return savedUrl;
     }
-    // Default: assume WS server is on port 3002 of same host
-    // This won't work for tunnelmole since each tunnel has different subdomain
-    // User needs to enter the WS tunnel URL manually
+    // User needs to enter the WS tunnel URL manually via server config
   }
 
   // 3. Default for local development
-  return 'ws://localhost:3002';
+  return 'ws://localhost:3102';
 }
 
 export function useOnlineGame(): UseOnlineGameReturn {

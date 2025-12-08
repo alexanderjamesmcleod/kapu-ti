@@ -93,14 +93,14 @@ export default function RoomPage() {
   }, []);
   
   const [serverUrl, setServerUrl] = useState(() => {
-    if (typeof window === 'undefined') return 'ws://localhost:3002';
+    if (typeof window === 'undefined') return 'ws://localhost:3102';
     const params = new URLSearchParams(window.location.search);
     const wsParam = params.get('ws');
     if (wsParam) {
       sessionStorage.setItem('kaputi_ws_url', wsParam);
       return wsParam;
     }
-    return sessionStorage.getItem('kaputi_ws_url') || 'ws://localhost:3002';
+    return sessionStorage.getItem('kaputi_ws_url') || 'ws://localhost:3102';
   });
   const [showServerConfig, setShowServerConfig] = useState(false);
   const wsFromUrl = initialWsUrl;
@@ -331,7 +331,7 @@ export default function RoomPage() {
                  online.connectionState === 'error' ? '🔴 Connection Error' : '⚪ Disconnected'}
               </span>
               <div className="flex gap-2">
-                {online.connectionState === 'connected' && serverUrl !== 'ws://localhost:3002' && (
+                {online.connectionState === 'connected' && serverUrl !== 'ws://localhost:3102' && (
                   <button
                     onClick={() => {
                       const shareUrl = `${window.location.origin}${window.location.pathname}?ws=${encodeURIComponent(serverUrl)}`;
@@ -357,14 +357,14 @@ export default function RoomPage() {
               <div className="bg-white rounded-xl p-4 shadow-md border-2 border-dashed border-gray-300">
                 <h2 className="font-bold text-gray-700 mb-2">Server Connection</h2>
                 <p className="text-xs text-gray-500 mb-3">
-                  For internet play: run <code className="bg-gray-100 px-1 rounded">tmole 3002</code> and paste the wss:// URL below
+                  For internet play: use cloudflared tunnel and paste the wss:// URL below
                 </p>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={serverUrl}
                     onChange={(e) => setServerUrl(e.target.value)}
-                    placeholder="wss://xxxx.tunnelmole.net"
+                    placeholder="wss://your-tunnel-url.trycloudflare.com"
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                   <button

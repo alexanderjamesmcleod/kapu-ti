@@ -208,7 +208,7 @@ export function GameTable({
   return (
     <div className="relative w-full max-w-4xl mx-auto">
       {/* Oval table container - includes player positions */}
-      <div className="relative" style={{ paddingTop: '50%' }}> {/* Aspect ratio for oval */}
+      <div className="relative" style={{ paddingTop: '55%' }}> {/* Fixed aspect ratio for oval */}
         {/* Oval table surface */}
         <div
           className="absolute inset-[8%] rounded-[50%] bg-gradient-to-br from-teal-700 to-teal-900
@@ -238,11 +238,11 @@ export function GameTable({
             />
 
             {/* Center content area */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 overflow-hidden">
               {/* Topic indicator */}
               {currentTopic && (
-                <div className="mb-3">
-                  <div className="px-4 py-2 bg-white/95 rounded-full shadow-lg text-sm">
+                <div className="mb-2 flex-shrink-0">
+                  <div className="px-3 py-1.5 bg-white/95 rounded-full shadow-lg text-sm">
                     <span className="text-lg">{currentTopic.icon}</span>
                     <span className="ml-2 font-bold text-teal-800">{currentTopic.name}</span>
                     <span className="ml-2 text-xs text-teal-600">({currentTopic.maori})</span>
@@ -250,8 +250,8 @@ export function GameTable({
                 </div>
               )}
 
-              {/* Sentence builder area */}
-              <div className="bg-black/20 rounded-2xl p-4 backdrop-blur-sm max-w-[80%]">
+              {/* Sentence builder area - constrained to prevent overflow */}
+              <div className="bg-black/20 rounded-2xl p-3 backdrop-blur-sm max-w-[90%] max-h-[70%] overflow-auto flex-shrink">
                 {centerContent || (
                   <p className="text-white/60 text-center text-sm">
                     Waiting for game to start...

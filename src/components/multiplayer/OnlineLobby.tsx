@@ -41,7 +41,7 @@ export function OnlineLobby({
   onBack,
 }: OnlineLobbyProps) {
   const [playerName, setPlayerName] = useState('');
-  const [serverUrl, setServerUrl] = useState('ws://localhost:3002');
+  const [serverUrl, setServerUrl] = useState('ws://localhost:3102');
   const [showServerConfig, setShowServerConfig] = useState(false);
 
   const myPlayer = players.find(p => p.id === playerId);

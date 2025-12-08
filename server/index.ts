@@ -37,7 +37,7 @@ import {
   cleanupVoiceOnDisconnect,
 } from './handlers';
 
-const PORT = parseInt(process.env.PORT || '3002', 10);
+const PORT = parseInt(process.env.PORT || '3102', 10);
 const gameManager = new GameManager();
 
 // Track connections
