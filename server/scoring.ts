@@ -1,102 +1,100 @@
 /**
- * Scoring module for Kapu Ti multiplayer game
- * Calculates points for completed turns with topic bonuses
+ * Scoring logic for Kapu Ti
+ * Pure functions with no side effects - easy to test
  */
 
 import type { Card } from '../src/types';
+import type { GameTopic, TableSlot } from '../src/types/multiplayer.types';
 
-export interface ScoreResult {
-  basePoints: number;      // 10 for successful turn
-  wordPoints: number;      // 2 per word in sentence
-  topicBonus: boolean;     // Whether topic bonus applies
-  topicMultiplier: number; // 2x if topic matches, 1x otherwise
-  totalPoints: number;     // Final calculated score
-  breakdown: string;       // Human-readable breakdown
-}
+// Scoring constants
+const POINTS_PER_CARD = 10;
+const TOPIC_BONUS = 5;
 
-export interface TurnData {
-  playedCards: Array<{ id: string; topics?: string[] }>;
-  currentTopic: string;   // e.g., 'kai', 'places'
-  allVotesApproved: boolean;
-  isFirstToEmpty: boolean;
-  isLongestSentence: boolean;
+/**
+ * Calculate score for a turn based on cards played
+ *
+ * @param playedCards - Cards played this turn (from turnState.playedCards)
+ * @param topic - Current game topic (optional)
+ * @returns Total points earned
+ */
+export function calculateTurnScore(
+  playedCards: { card: Card; slotId: string }[],
+  topic?: GameTopic
+): number {
+  if (playedCards.length === 0) {
+    return 0;
+  }
+
+  // Base score: 10 points per card
+  let score = playedCards.length * POINTS_PER_CARD;
+
+  // Topic bonus: +5 per card that matches the topic
+  if (topic) {
+    const topicBonusCards = playedCards.filter(({ card }) =>
+      cardMatchesTopic(card, topic)
+    );
+    score += topicBonusCards.length * TOPIC_BONUS;
+  }
+
+  return score;
 }
 
 /**
- * Check if any played card matches the current topic
- * @param cards - Array of cards with optional topics array
- * @param topic - Current topic to match against
- * @returns true if any card has the topic in its topics array
+ * Check if a card matches the current topic
+ * Cards can have a 'topics' array in their data
  */
-export function hasTopicMatch(
-  cards: Array<{ topics?: string[] }>,
-  topic: string
-): boolean {
-  return cards.some(card => card.topics?.includes(topic));
+function cardMatchesTopic(card: Card, topic: GameTopic): boolean {
+  // Cards may have a topics array (optional field)
+  const cardTopics = (card as any).topics;
+  if (!cardTopics || !Array.isArray(cardTopics)) {
+    return false;
+  }
+
+  // Check if card's topics include the current topic ID
+  return cardTopics.includes(topic.id);
 }
 
 /**
- * Calculate score for a completed turn
- * @param turnData - Data about the turn including cards played and votes
- * @returns Detailed score breakdown
+ * Calculate bonus for sentence length
+ * Longer sentences = more points
+ *
+ * @param slots - Table slots with cards
+ * @returns Bonus points for sentence length
  */
-export function calculateTurnScore(turnData: TurnData): ScoreResult {
-  const basePoints = 10; // Successful turn
+export function calculateSentenceLengthBonus(slots: TableSlot[]): number {
+  const nonEmptySlots = slots.filter(s => s.cards.length > 0);
 
-  // Count words in the sentence (estimated by number of cards played)
-  const wordCount = turnData.playedCards.length;
-  const wordPoints = wordCount * 2;
-
-  // Check if topic bonus applies
-  const topicBonus = hasTopicMatch(turnData.playedCards, turnData.currentTopic);
-  const topicMultiplier = topicBonus ? 2 : 1;
-
-  // Calculate points before bonuses
-  const pointsBeforeBonus = basePoints + wordPoints;
-  const pointsAfterTopicMultiplier = pointsBeforeBonus * topicMultiplier;
-
-  // Add additional bonuses (additive, after multiplier)
-  let additionalBonus = 0;
-  const bonusBreakdown: string[] = [];
-
-  if (turnData.isFirstToEmpty) {
-    additionalBonus += 20;
-    bonusBreakdown.push('+20 (first to empty)');
+  // No bonus for short sentences
+  if (nonEmptySlots.length < 3) {
+    return 0;
   }
 
-  if (turnData.isLongestSentence) {
-    additionalBonus += 10;
-    bonusBreakdown.push('+10 (longest sentence)');
-  }
+  // +5 for each word beyond the first 2
+  return (nonEmptySlots.length - 2) * 5;
+}
 
-  if (turnData.allVotesApproved) {
-    additionalBonus += 5;
-    bonusBreakdown.push('+5 (perfect approval)');
-  }
+/**
+ * Calculate total score for a successful turn
+ * Combines card points, topic bonus, and sentence length bonus
+ */
+export function calculateFullTurnScore(
+  playedCards: { card: Card; slotId: string }[],
+  slots: TableSlot[],
+  topic?: GameTopic
+): { total: number; breakdown: { cards: number; topicBonus: number; lengthBonus: number } } {
+  const cardScore = calculateTurnScore(playedCards, topic);
+  const lengthBonus = calculateSentenceLengthBonus(slots);
 
-  const totalPoints = pointsAfterTopicMultiplier + additionalBonus;
-
-  // Build human-readable breakdown
-  let breakdown = `${basePoints} base + ${wordPoints} words`;
-
-  if (topicBonus) {
-    breakdown += ` = ${pointsBeforeBonus} × 2 (topic)`;
-  } else {
-    breakdown += ` = ${pointsBeforeBonus}`;
-  }
-
-  if (bonusBreakdown.length > 0) {
-    breakdown += ` + ${bonusBreakdown.join(' + ')}`;
-  }
-
-  breakdown += ` = ${totalPoints}`;
+  // Separate out topic bonus for breakdown
+  const baseCardScore = playedCards.length * POINTS_PER_CARD;
+  const topicBonus = cardScore - baseCardScore;
 
   return {
-    basePoints,
-    wordPoints,
-    topicBonus,
-    topicMultiplier,
-    totalPoints,
-    breakdown,
+    total: cardScore + lengthBonus,
+    breakdown: {
+      cards: baseCardScore,
+      topicBonus,
+      lengthBonus,
+    },
   };
 }
