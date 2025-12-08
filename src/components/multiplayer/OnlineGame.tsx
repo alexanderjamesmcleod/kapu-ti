@@ -11,6 +11,8 @@ interface OnlineGameProps {
   playerId: string;
   currentSentence: string;
   isMyTurn: boolean;
+  turnTimeRemaining: number | null;
+  currentTurnPlayerId: string | null;
   onPlayCard: (cardId: string, slotId: string) => void;
   onCreateSlot: (cardId: string) => void;
   onSubmitTurn: (spoken: string, translation: string) => void;
@@ -26,6 +28,8 @@ export function OnlineGame({
   playerId,
   currentSentence,
   isMyTurn,
+  turnTimeRemaining,
+  currentTurnPlayerId,
   onPlayCard,
   onCreateSlot,
   onSubmitTurn,
@@ -339,17 +343,34 @@ export function OnlineGame({
           )}
         </div>
 
-        {/* Turn indicator */}
+        {/* Turn indicator with timer */}
         <div className={`rounded-xl p-3 mb-4 text-center ${
           isMyTurn ? 'bg-teal-100' : 'bg-gray-100'
         }`}>
-          <span className={`font-semibold ${isMyTurn ? 'text-teal-800' : 'text-gray-600'}`}>
-            {isMyTurn ? 'Your Turn!' : `${activePlayer?.name}'s Turn`}
-          </span>
+          <div className="flex items-center justify-center gap-3">
+            <span className={`font-semibold ${isMyTurn ? 'text-teal-800' : 'text-gray-600'}`}>
+              {isMyTurn ? 'Your Turn!' : `${activePlayer?.name}'s Turn`}
+            </span>
+            {/* Turn timer - shows when <= 10 seconds remaining */}
+            {turnTimeRemaining !== null && turnTimeRemaining <= 10 && game.phase === 'playing' && (
+              <span className={`px-2 py-0.5 rounded-full text-sm font-bold ${
+                turnTimeRemaining <= 5 
+                  ? 'bg-red-500 text-white animate-pulse' 
+                  : 'bg-amber-500 text-white'
+              }`}>
+                {turnTimeRemaining}s
+              </span>
+            )}
+          </div>
           {isMyTurn && game.turnState.playedCards.length > 0 && (
-            <span className="text-teal-600 ml-2">
+            <span className="text-teal-600 text-sm">
               ({game.turnState.playedCards.length} card{game.turnState.playedCards.length !== 1 ? 's' : ''} played)
             </span>
+          )}
+          {turnTimeRemaining !== null && turnTimeRemaining <= 5 && isMyTurn && (
+            <p className="text-red-600 text-sm font-medium mt-1">
+              Hurry! Auto-skip in {turnTimeRemaining}s
+            </p>
           )}
         </div>
 

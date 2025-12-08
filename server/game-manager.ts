@@ -25,10 +25,301 @@ import {
 // Bot socket ID prefix - used to identify bot players
 const BOT_PREFIX = 'bot-';
 
+// Matchmaking constants
+const MAX_PLAYERS_PER_TABLE = 10;
+const MIN_PLAYERS_TO_START = 2;
+
+// Turn timer constants
+const DEFAULT_TURN_TIME_LIMIT = 30; // seconds
+const TURN_TIMER_CHECK_INTERVAL = 1000; // Check every second
+const MAX_AUTO_SKIPS_BEFORE_KICK = 3; // Kick after 3 consecutive auto-skips
+const RECONNECT_GRACE_PERIOD = 60 * 1000; // 60 seconds to reconnect (fast-paced like poker)
+
+// Track disconnected players for reconnection
+interface DisconnectedPlayer {
+  playerId: string;
+  playerName: string;
+  roomCode: string;
+  disconnectedAt: number;
+}
+
 export class GameManager {
   private rooms: Map<string, Room> = new Map();
   private playerToRoom: Map<string, string> = new Map();
   private socketToPlayer: Map<string, string> = new Map();
+  // Track disconnected players for reconnection
+  private disconnectedPlayers: Map<string, DisconnectedPlayer> = new Map();
+  // Turn timer interval reference
+  private turnTimerInterval: NodeJS.Timeout | null = null;
+  // Callback for broadcasting game state
+  private onTurnTimeout?: (roomCode: string, playerId: string) => void;
+  private onTurnTimerUpdate?: (roomCode: string, playerId: string, timeRemaining: number) => void;
+
+  /**
+   * Set callbacks for turn timer events
+   */
+  setTurnTimerCallbacks(
+    onTimeout: (roomCode: string, playerId: string) => void,
+    onTimerUpdate: (roomCode: string, playerId: string, timeRemaining: number) => void
+  ): void {
+    this.onTurnTimeout = onTimeout;
+    this.onTurnTimerUpdate = onTimerUpdate;
+    
+    // Start the turn timer checker if not already running
+    if (!this.turnTimerInterval) {
+      this.turnTimerInterval = setInterval(() => this.checkTurnTimers(), TURN_TIMER_CHECK_INTERVAL);
+    }
+  }
+
+  /**
+   * Check all active games for turn timeouts
+   */
+  private checkTurnTimers(): void {
+    const now = Date.now();
+    
+    for (const [roomCode, room] of this.rooms) {
+      if (!room.game || room.game.phase !== 'playing') continue;
+      
+      const game = room.game;
+      const turnStartedAt = game.turnStartedAt;
+      const timeLimit = game.turnTimeLimit ?? DEFAULT_TURN_TIME_LIMIT;
+      
+      if (!turnStartedAt) continue;
+      
+      const elapsedSeconds = Math.floor((now - turnStartedAt) / 1000);
+      const timeRemaining = Math.max(0, timeLimit - elapsedSeconds);
+      
+      const currentPlayer = game.players[game.currentPlayerIndex];
+      if (!currentPlayer) continue;
+      
+      // Skip timer for bots
+      const roomPlayer = room.players.find(p => p.id === currentPlayer.id);
+      if (roomPlayer?.socketId.startsWith(BOT_PREFIX)) continue;
+      
+      // Broadcast timer update
+      if (this.onTurnTimerUpdate && timeRemaining <= 10) {
+        // Only broadcast when <= 10 seconds remaining
+        this.onTurnTimerUpdate(roomCode, currentPlayer.id, timeRemaining);
+      }
+      
+      // Check for timeout
+      if (timeRemaining === 0) {
+        this.handleTurnTimeout(roomCode, currentPlayer.id);
+      }
+    }
+  }
+
+  /**
+   * Handle a player timing out on their turn
+   */
+  private handleTurnTimeout(roomCode: string, playerId: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.game) return;
+    
+    const playerIndex = room.game.players.findIndex(p => p.id === playerId);
+    if (playerIndex === -1) return;
+    
+    // Increment auto-skip count
+    const player = room.game.players[playerIndex];
+    const newSkipCount = (player.consecutiveAutoSkips ?? 0) + 1;
+    
+    // Update player's skip count
+    room.game.players[playerIndex] = {
+      ...player,
+      consecutiveAutoSkips: newSkipCount,
+    };
+    
+    console.log(`[Turn Timeout] ${player.name} auto-skipped (${newSkipCount}/${MAX_AUTO_SKIPS_BEFORE_KICK})`);
+    
+    // Auto-pass the turn
+    const result = passTurn(room.game, playerId);
+    if (result.success) {
+      room.game = result.game;
+      // Reset turn timer for next player
+      this.startTurnTimer(roomCode);
+    }
+    
+    // Notify about timeout
+    if (this.onTurnTimeout) {
+      this.onTurnTimeout(roomCode, playerId);
+    }
+    
+    // Check if player should be kicked for too many auto-skips
+    if (newSkipCount >= MAX_AUTO_SKIPS_BEFORE_KICK) {
+      console.log(`[AFK Kick] ${player.name} kicked for ${newSkipCount} consecutive auto-skips`);
+      // Mark player as inactive/away - they can reconnect
+      room.game.players[playerIndex] = {
+        ...room.game.players[playerIndex],
+        connectionStatus: 'away',
+      };
+    }
+  }
+
+  /**
+   * Start or reset the turn timer for the current player
+   */
+  startTurnTimer(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.game) return;
+    
+    room.game.turnStartedAt = Date.now();
+    room.game.turnTimeLimit = room.game.turnTimeLimit ?? DEFAULT_TURN_TIME_LIMIT;
+  }
+
+  /**
+   * Reset consecutive auto-skips when a player takes an action
+   */
+  resetAutoSkips(roomCode: string, playerId: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.game) return;
+    
+    const playerIndex = room.game.players.findIndex(p => p.id === playerId);
+    if (playerIndex !== -1) {
+      room.game.players[playerIndex] = {
+        ...room.game.players[playerIndex],
+        consecutiveAutoSkips: 0,
+      };
+    }
+  }
+
+  /**
+   * Handle player disconnection - track for potential reconnection
+   */
+  handlePlayerDisconnect(socketId: string): DisconnectedPlayer | null {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId) return null;
+    
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return null;
+    
+    const room = this.rooms.get(roomCode);
+    if (!room) return null;
+    
+    const roomPlayer = room.players.find(p => p.id === playerId);
+    if (!roomPlayer) return null;
+    
+    // Don't track bots
+    if (roomPlayer.socketId.startsWith(BOT_PREFIX)) return null;
+    
+    const disconnectedPlayer: DisconnectedPlayer = {
+      playerId,
+      playerName: roomPlayer.name,
+      roomCode,
+      disconnectedAt: Date.now(),
+    };
+    
+    // Store for potential reconnection (key by name for easier lookup)
+    this.disconnectedPlayers.set(roomPlayer.name.toLowerCase(), disconnectedPlayer);
+    
+    // Mark player as disconnected in game
+    if (room.game) {
+      const playerIndex = room.game.players.findIndex(p => p.id === playerId);
+      if (playerIndex !== -1) {
+        room.game.players[playerIndex] = {
+          ...room.game.players[playerIndex],
+          connectionStatus: 'disconnected',
+        };
+      }
+    }
+    
+    console.log(`[Disconnect] ${roomPlayer.name} disconnected from room ${roomCode}`);
+    
+    return disconnectedPlayer;
+  }
+
+  /**
+   * Attempt to reconnect a player by name
+   */
+  attemptReconnect(socketId: string, playerName: string): {
+    success: boolean;
+    room?: Room;
+    playerId?: string;
+    error?: string;
+  } {
+    const key = playerName.toLowerCase();
+    const disconnectedPlayer = this.disconnectedPlayers.get(key);
+    
+    if (!disconnectedPlayer) {
+      return { success: false, error: 'No previous session found' };
+    }
+    
+    // Check if grace period expired
+    const elapsed = Date.now() - disconnectedPlayer.disconnectedAt;
+    if (elapsed > RECONNECT_GRACE_PERIOD) {
+      this.disconnectedPlayers.delete(key);
+      return { success: false, error: 'Reconnection period expired' };
+    }
+    
+    const room = this.rooms.get(disconnectedPlayer.roomCode);
+    if (!room) {
+      this.disconnectedPlayers.delete(key);
+      return { success: false, error: 'Game no longer exists' };
+    }
+    
+    // Find the player's spot
+    const roomPlayer = room.players.find(p => p.id === disconnectedPlayer.playerId);
+    if (!roomPlayer) {
+      this.disconnectedPlayers.delete(key);
+      return { success: false, error: 'Player seat no longer available' };
+    }
+    
+    // Update socket mappings
+    roomPlayer.socketId = socketId;
+    this.socketToPlayer.set(socketId, disconnectedPlayer.playerId);
+    
+    // Mark player as connected in game
+    if (room.game) {
+      const playerIndex = room.game.players.findIndex(p => p.id === disconnectedPlayer.playerId);
+      if (playerIndex !== -1) {
+        room.game.players[playerIndex] = {
+          ...room.game.players[playerIndex],
+          connectionStatus: 'connected',
+          consecutiveAutoSkips: 0, // Reset on reconnect
+        };
+      }
+    }
+    
+    // Clean up disconnected tracker
+    this.disconnectedPlayers.delete(key);
+    
+    console.log(`[Reconnect] ${playerName} reconnected to room ${room.code}`);
+    
+    return { success: true, room, playerId: disconnectedPlayer.playerId };
+  }
+
+  /**
+   * Clean up expired disconnect entries
+   */
+  cleanupDisconnectedPlayers(): void {
+    const now = Date.now();
+    for (const [key, player] of this.disconnectedPlayers) {
+      if (now - player.disconnectedAt > RECONNECT_GRACE_PERIOD) {
+        this.disconnectedPlayers.delete(key);
+        console.log(`[Cleanup] Removed expired reconnect entry for ${player.playerName}`);
+      }
+    }
+  }
+
+  /**
+   * Get a room by code
+   */
+  getRoom(roomCode: string): Room | undefined {
+    return this.rooms.get(roomCode);
+  }
+
+  /**
+   * Get player ID from socket ID
+   */
+  getPlayerIdFromSocket(socketId: string): string | undefined {
+    return this.socketToPlayer.get(socketId);
+  }
+
+  /**
+   * Get room code for a player
+   */
+  getRoomCodeForPlayer(playerId: string): string | undefined {
+    return this.playerToRoom.get(playerId);
+  }
 
   // Create a new room
   createRoom(socketId: string, playerName: string): { room: Room; playerId: string } {
@@ -62,6 +353,173 @@ export class GameManager {
     this.socketToPlayer.set(socketId, playerId);
 
     return { room, playerId };
+  }
+
+  /**
+   * Auto-matchmaking: Find an available table or create a new one
+   * - If a table has room (< 10 players) and game in progress, add player mid-game
+   * - If a table has room and is waiting (< 2 players), add player and maybe start
+   * - If no suitable table, create a new one
+   */
+  findOrCreateGame(socketId: string, playerName: string): {
+    room: Room;
+    playerId: string;
+    game: MultiplayerGame | null;
+    isNewGame: boolean;
+    shouldStartGame: boolean;
+  } {
+    const playerId = generateId();
+    const player: RoomPlayer = {
+      id: playerId,
+      name: playerName,
+      socketId,
+      isHost: false,
+      isReady: true,
+    };
+
+    // Find a table with room (prefer tables waiting for players, then active games)
+    let targetRoom: Room | null = null;
+    
+    // First: look for waiting rooms (no game yet, needs players)
+    for (const room of this.rooms.values()) {
+      const realPlayerCount = room.players.filter(p => !p.socketId.startsWith(BOT_PREFIX)).length;
+      if (!room.game && realPlayerCount < MAX_PLAYERS_PER_TABLE) {
+        targetRoom = room;
+        break;
+      }
+    }
+
+    // Second: look for active games that aren't full
+    if (!targetRoom) {
+      for (const room of this.rooms.values()) {
+        const realPlayerCount = room.players.filter(p => !p.socketId.startsWith(BOT_PREFIX)).length;
+        if (room.game && realPlayerCount < MAX_PLAYERS_PER_TABLE) {
+          targetRoom = room;
+          break;
+        }
+      }
+    }
+
+    // No suitable room found - create a new one
+    if (!targetRoom) {
+      let roomCode = generateRoomCode();
+      while (this.rooms.has(roomCode)) {
+        roomCode = generateRoomCode();
+      }
+
+      player.isHost = true;
+      const now = Date.now();
+      targetRoom = {
+        code: roomCode,
+        players: [player],
+        game: null,
+        createdAt: now,
+        lastActivity: now,
+        hostId: playerId,
+      };
+
+      this.rooms.set(roomCode, targetRoom);
+      this.playerToRoom.set(playerId, roomCode);
+      this.socketToPlayer.set(socketId, playerId);
+
+      return {
+        room: targetRoom,
+        playerId,
+        game: null,
+        isNewGame: true,
+        shouldStartGame: false, // Need at least 2 players
+      };
+    }
+
+    // Add player to existing room
+    targetRoom.players.push(player);
+    targetRoom.lastActivity = Date.now();
+    this.playerToRoom.set(playerId, targetRoom.code);
+    this.socketToPlayer.set(socketId, playerId);
+
+    // If game is in progress, add player to the game
+    if (targetRoom.game) {
+      this.addPlayerToActiveGame(targetRoom, player);
+      return {
+        room: targetRoom,
+        playerId,
+        game: targetRoom.game,
+        isNewGame: false,
+        shouldStartGame: false, // Game already running
+      };
+    }
+
+    // Check if we should auto-start the game
+    const realPlayerCount = targetRoom.players.filter(p => !p.socketId.startsWith(BOT_PREFIX)).length;
+    const shouldStartGame = realPlayerCount >= MIN_PLAYERS_TO_START;
+
+    return {
+      room: targetRoom,
+      playerId,
+      game: null,
+      isNewGame: false,
+      shouldStartGame,
+    };
+  }
+
+  /**
+   * Add a player to an active game mid-game
+   * They get dealt cards and added to the turn order at the end
+   */
+  private addPlayerToActiveGame(room: Room, roomPlayer: RoomPlayer): void {
+    if (!room.game) return;
+
+    const game = room.game;
+    
+    // Deal cards to new player from draw pile
+    const cardsPerPlayer = 7; // Default
+    const newHand = game.drawPile.splice(0, Math.min(cardsPerPlayer, game.drawPile.length));
+    
+    // Create new player object
+    const newPlayer: import('../src/types/multiplayer.types').Player = {
+      id: roomPlayer.id,
+      name: roomPlayer.name,
+      hand: newHand,
+      isActive: true,
+      position: game.players.length, // Add at end
+    };
+
+    game.players.push(newPlayer);
+
+    // Deal them a turn order card (for display purposes)
+    // They join at the end of turn order - give them a "0" card (lowest priority)
+    if (game.turnOrderCards) {
+      game.turnOrderCards.push({
+        value: 0,
+        maori: 'Hōu', // New (late joiner)
+        english: 'Late',
+        revealed: true,
+      });
+    }
+
+    console.log(`[Late Join] ${roomPlayer.name} joined active game in room ${room.code} with ${newHand.length} cards`);
+  }
+
+  /**
+   * Auto-start a game when enough players join
+   * Called by the matchmaking system
+   */
+  autoStartGame(roomCode: string): { game: MultiplayerGame; room: Room } | null {
+    const room = this.rooms.get(roomCode);
+    if (!room || room.game) return null; // Already has a game
+
+    const realPlayerCount = room.players.filter(p => !p.socketId.startsWith(BOT_PREFIX)).length;
+    if (realPlayerCount < MIN_PLAYERS_TO_START) return null;
+
+    // Initialize game with all current players
+    const playerIds = room.players.map(p => p.id);
+    const playerNames = room.players.map(p => p.name);
+    const game = initializeGame(playerIds, playerNames);
+
+    room.game = game;
+    console.log(`[Auto-Start] Game started in room ${room.code} with ${room.players.length} players`);
+
+    return { game, room };
   }
 
   // Join an existing room
@@ -513,5 +971,28 @@ export class GameManager {
       activeGames,
       totalPlayers,
     };
+  }
+
+  // Get list of public rooms for browsing (only rooms without active games that aren't full)
+  getPublicRooms(): { code: string; playerCount: number; maxPlayers: number; hasGame: boolean; hostName: string }[] {
+    const publicRooms: { code: string; playerCount: number; maxPlayers: number; hasGame: boolean; hostName: string }[] = [];
+    const MAX_PLAYERS = 6;
+
+    for (const room of this.rooms.values()) {
+      // Only show rooms that are joinable (not full, no game in progress)
+      const realPlayerCount = room.players.filter(p => !p.socketId.startsWith(BOT_PREFIX)).length;
+      if (realPlayerCount > 0 && realPlayerCount < MAX_PLAYERS) {
+        const host = room.players.find(p => p.isHost);
+        publicRooms.push({
+          code: room.code,
+          playerCount: room.players.length,
+          maxPlayers: MAX_PLAYERS,
+          hasGame: room.game !== null,
+          hostName: host?.name || 'Unknown',
+        });
+      }
+    }
+
+    return publicRooms;
   }
 }

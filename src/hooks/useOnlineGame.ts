@@ -39,9 +39,20 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+// Public room info for browsing
+export interface PublicRoomInfo {
+  code: string;
+  playerCount: number;
+  maxPlayers: number;
+  hasGame: boolean;
+  hostName: string;
+}
+
 type ServerMessage =
   | { type: 'ROOM_CREATED'; roomCode: string; playerId: string }
   | { type: 'ROOM_JOINED'; roomCode: string; playerId: string; players: RoomPlayer[] }
+  | { type: 'GAME_FOUND'; roomCode: string; playerId: string; players: RoomPlayer[]; game: MultiplayerGame | null; waiting: boolean }
+  | { type: 'ROOM_LIST'; rooms: PublicRoomInfo[] }
   | { type: 'PLAYER_JOINED'; player: RoomPlayer }
   | { type: 'PLAYER_LEFT'; playerId: string }
   | { type: 'PLAYER_READY'; playerId: string; ready: boolean }
@@ -50,6 +61,11 @@ type ServerMessage =
   | { type: 'CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'ERROR'; message: string }
   | { type: 'PONG' }
+  // Turn timer and reconnection
+  | { type: 'TURN_TIMER_UPDATE'; playerId: string; timeRemaining: number }
+  | { type: 'TURN_TIMEOUT'; playerId: string; autoSkipped: boolean }
+  | { type: 'PLAYER_DISCONNECTED'; playerId: string; playerName: string }
+  | { type: 'PLAYER_RECONNECTED'; playerId: string; playerName: string }
   // Voice chat messages
   | { type: 'VOICE_SIGNAL'; fromPlayerId: string; signal: unknown }
   | { type: 'VOICE_PEER_JOINED'; playerId: string; playerName: string }
@@ -78,6 +94,11 @@ interface UseOnlineGameReturn {
   playerId: string | null;
   players: RoomPlayer[];
   isHost: boolean;
+  isWaitingForPlayers: boolean;  // Waiting for more players to auto-start
+
+  // Turn timer state
+  turnTimeRemaining: number | null;  // Seconds left, null when not active
+  currentTurnPlayerId: string | null;  // Who the timer is counting for
 
   // Game state
   game: MultiplayerGame | null;
@@ -88,9 +109,14 @@ interface UseOnlineGameReturn {
   // Chat state
   chatMessages: ChatMessage[];
 
+  // Public rooms for browsing
+  publicRooms: PublicRoomInfo[];
+
   // Lobby actions
   connect: (serverUrl?: string) => void;
   disconnect: () => void;
+  findGame: (playerName: string) => void;  // Auto-matchmaking
+  listRooms: () => void;
   createRoom: (playerName: string) => void;
   joinRoom: (roomCode: string, playerName: string) => void;
   leaveRoom: () => void;
@@ -156,12 +182,20 @@ export function useOnlineGame(): UseOnlineGameReturn {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [players, setPlayers] = useState<RoomPlayer[]>([]);
+  const [isWaitingForPlayers, setIsWaitingForPlayers] = useState(false);
 
   // Game state
   const [game, setGame] = useState<MultiplayerGame | null>(null);
 
+  // Turn timer state
+  const [turnTimeRemaining, setTurnTimeRemaining] = useState<number | null>(null);
+  const [currentTurnPlayerId, setCurrentTurnPlayerId] = useState<string | null>(null);
+
   // Chat state (keep last 50 messages)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // Public rooms for browsing
+  const [publicRooms, setPublicRooms] = useState<PublicRoomInfo[]>([]);
 
   // Computed values
   const isHost = useMemo(() => {
@@ -229,7 +263,29 @@ export function useOnlineGame(): UseOnlineGameReturn {
           setPlayerId(message.playerId);
           setPlayers(message.players);
           setLobbyState('inRoom');
+          setIsWaitingForPlayers(false);
           setError(null);
+          break;
+
+        case 'GAME_FOUND':
+          // Auto-matchmaking response
+          setRoomCode(message.roomCode);
+          setPlayerId(message.playerId);
+          setPlayers(message.players);
+          setIsWaitingForPlayers(message.waiting);
+          if (message.game) {
+            // Joined mid-game
+            setGame(deserializeGame(message.game));
+            setLobbyState('inGame');
+          } else {
+            setLobbyState('inRoom');
+          }
+          setError(null);
+          console.log(`[Kapu Ti] Game found: ${message.roomCode}, waiting: ${message.waiting}`);
+          break;
+
+        case 'ROOM_LIST':
+          setPublicRooms(message.rooms);
           break;
 
         case 'PLAYER_JOINED':
@@ -287,6 +343,34 @@ export function useOnlineGame(): UseOnlineGameReturn {
 
         case 'VOICE_MUTE_CHANGED':
           voiceHandlersRef.current.onVoiceMuteChanged?.(message.playerId, message.isMuted);
+          break;
+
+        // Turn timer messages
+        case 'TURN_TIMER_UPDATE':
+          setTurnTimeRemaining(message.timeRemaining);
+          setCurrentTurnPlayerId(message.playerId);
+          break;
+
+        case 'TURN_TIMEOUT':
+          console.log('[Kapu Ti] Turn timeout:', message.playerId, 'auto-skipped:', message.autoSkipped);
+          // Timer will be reset by next GAME_STATE
+          setTurnTimeRemaining(null);
+          break;
+
+        // Reconnection messages
+        case 'PLAYER_DISCONNECTED':
+          console.log('[Kapu Ti] Player disconnected:', message.playerName);
+          // Update player list to show disconnected state
+          setPlayers(prev => prev.map(p =>
+            p.id === message.playerId ? { ...p, isReady: false } : p
+          ));
+          break;
+
+        case 'PLAYER_RECONNECTED':
+          console.log('[Kapu Ti] Player reconnected:', message.playerName);
+          setPlayers(prev => prev.map(p =>
+            p.id === message.playerId ? { ...p, isReady: true } : p
+          ));
           break;
       }
     } catch (err) {
@@ -362,6 +446,14 @@ export function useOnlineGame(): UseOnlineGameReturn {
   }, [disconnect]);
 
   // Lobby actions
+  const listRooms = useCallback(() => {
+    send({ type: 'LIST_ROOMS' });
+  }, [send]);
+
+  const findGame = useCallback((playerName: string) => {
+    send({ type: 'FIND_GAME', playerName });
+  }, [send]);
+
   const createRoom = useCallback((playerName: string) => {
     send({ type: 'CREATE_ROOM', playerName });
   }, [send]);
@@ -456,6 +548,11 @@ export function useOnlineGame(): UseOnlineGameReturn {
     playerId,
     players,
     isHost,
+    isWaitingForPlayers,
+
+    // Turn timer state
+    turnTimeRemaining,
+    currentTurnPlayerId,
 
     // Game state
     game,
@@ -463,9 +560,14 @@ export function useOnlineGame(): UseOnlineGameReturn {
     currentSentence,
     isMyTurn,
 
+    // Public rooms
+    publicRooms,
+
     // Lobby actions
     connect,
     disconnect,
+    findGame,
+    listRooms,
     createRoom,
     joinRoom,
     leaveRoom,

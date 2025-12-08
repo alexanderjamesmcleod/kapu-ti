@@ -43,11 +43,23 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+// Public room info (for browse)
+export interface PublicRoomInfo {
+  code: string;
+  playerCount: number;
+  maxPlayers: number;
+  hasGame: boolean;  // true if game in progress
+  hostName: string;
+}
+
 // Client -> Server messages
 export type ClientMessage =
+  | { type: 'FIND_GAME'; playerName: string }  // Auto-matchmaking - find or create table
+  | { type: 'RECONNECT'; roomCode: string; playerName: string; playerId?: string }  // Rejoin after disconnect
   | { type: 'CREATE_ROOM'; playerName: string }
   | { type: 'JOIN_ROOM'; roomCode: string; playerName: string }
   | { type: 'LEAVE_ROOM' }
+  | { type: 'LIST_ROOMS' }  // Request list of joinable rooms
   | { type: 'SET_READY'; ready: boolean }
   | { type: 'ADD_BOT'; botName?: string }
   | { type: 'START_GAME' }
@@ -80,11 +92,17 @@ export interface VoiceSignal {
 export type ServerMessage =
   | { type: 'ROOM_CREATED'; roomCode: string; playerId: string }
   | { type: 'ROOM_JOINED'; roomCode: string; playerId: string; players: RoomPlayer[] }
+  | { type: 'GAME_FOUND'; roomCode: string; playerId: string; players: RoomPlayer[]; game: import('../src/types/multiplayer.types').MultiplayerGame | null; waiting: boolean }  // Response to FIND_GAME
+  | { type: 'ROOM_LIST'; rooms: PublicRoomInfo[] }  // Response to LIST_ROOMS
   | { type: 'PLAYER_JOINED'; player: RoomPlayer }
   | { type: 'PLAYER_LEFT'; playerId: string }
   | { type: 'PLAYER_READY'; playerId: string; ready: boolean }
   | { type: 'GAME_STARTED'; game: import('../src/types/multiplayer.types').MultiplayerGame; yourPlayerId: string }
   | { type: 'GAME_STATE'; game: import('../src/types/multiplayer.types').MultiplayerGame }
+  | { type: 'TURN_TIMER_UPDATE'; timeRemaining: number; playerId: string }  // Sent periodically
+  | { type: 'TURN_TIMEOUT'; playerId: string; autoSkipped: boolean }  // Player timed out
+  | { type: 'PLAYER_DISCONNECTED'; playerId: string; playerName: string }  // Player went offline
+  | { type: 'PLAYER_RECONNECTED'; playerId: string; playerName: string }  // Player came back
   | { type: 'CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'ERROR'; message: string }
   | { type: 'PONG' }

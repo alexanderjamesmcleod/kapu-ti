@@ -6,8 +6,35 @@
 
 import { WebSocketServer, WebSocket } from 'ws';
 import { GameManager } from './game-manager';
-import type { ClientMessage, ServerMessage, ChatMessage } from './types';
-import type { MultiplayerGame } from '../src/types/multiplayer.types';
+import type { ClientMessage } from './types';
+import {
+  HandlerContext,
+  send,
+  broadcast,
+  // Lobby handlers
+  handleFindGame,
+  autoStartGameIfReady,
+  handleCreateRoom,
+  handleJoinRoom,
+  handleReconnect,
+  handleListRooms,
+  handleLeaveRoom,
+  handleSetReady,
+  handleAddBot,
+  // Game handlers
+  handleStartGame,
+  handleGameAction,
+  handleConfirmTurnEnd,
+  // Chat handlers
+  handleChat,
+  handleReaction,
+  // Voice handlers
+  handleVoiceJoin,
+  handleVoiceLeave,
+  handleVoiceSignal,
+  handleVoiceMute,
+  cleanupVoiceOnDisconnect,
+} from './handlers';
 
 const PORT = parseInt(process.env.PORT || '3002', 10);
 const gameManager = new GameManager();
@@ -26,38 +53,53 @@ function generateSocketId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
 
-// Send message to a specific socket
-function send(ws: WebSocket, message: ServerMessage): void {
-  if (ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(message));
-  }
+// Create handler context for a socket
+function createContext(ws: WebSocket, socketId: string): HandlerContext {
+  return {
+    ws,
+    socketId,
+    gameManager,
+    connections,
+    voiceParticipants,
+    voiceMuteState,
+  };
 }
 
-// Send to all sockets in a room
-function broadcast(roomCode: string, message: ServerMessage, excludeSocket?: string): void {
-  const sockets = gameManager.getSocketsInRoom(roomCode);
-  for (const socketId of sockets) {
-    if (socketId !== excludeSocket) {
-      const ws = connections.get(socketId);
-      if (ws) {
-        send(ws, message);
+// Set up turn timer callbacks
+gameManager.setTurnTimerCallbacks(
+  // On timeout - broadcast timeout event and game state
+  (roomCode: string, playerId: string) => {
+    const room = gameManager.getRoom(roomCode);
+    if (!room) return;
+    
+    // Broadcast timeout notification
+    for (const player of room.players) {
+      const ws = connections.get(player.socketId);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        send(ws, { type: 'TURN_TIMEOUT', playerId, autoSkipped: true });
+      }
+    }
+    
+    // Broadcast updated game state
+    if (room.game) {
+      const { broadcastGameState } = require('./handlers');
+      const dummyCtx = { gameManager, connections, voiceParticipants, voiceMuteState } as HandlerContext;
+      broadcastGameState(dummyCtx, roomCode, room.game);
+    }
+  },
+  // On timer update - broadcast remaining time
+  (roomCode: string, playerId: string, timeRemaining: number) => {
+    const room = gameManager.getRoom(roomCode);
+    if (!room) return;
+    
+    for (const player of room.players) {
+      const ws = connections.get(player.socketId);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        send(ws, { type: 'TURN_TIMER_UPDATE', playerId, timeRemaining });
       }
     }
   }
-}
-
-// Send game state to all players in room (each player gets their sanitized view)
-function broadcastGameState(roomCode: string, game: MultiplayerGame): void {
-  const sockets = gameManager.getSocketsInRoom(roomCode);
-  for (const socketId of sockets) {
-    const ws = connections.get(socketId);
-    const playerId = gameManager.getPlayerIdBySocket(socketId);
-    if (ws && playerId) {
-      const sanitizedGame = gameManager.getGameForPlayer(game, playerId);
-      send(ws, { type: 'GAME_STATE', game: sanitizedGame as MultiplayerGame });
-    }
-  }
-}
+);
 
 // Create WebSocket server
 const wss = new WebSocketServer({ port: PORT });
@@ -71,124 +113,60 @@ wss.on('connection', (ws: WebSocket) => {
   console.log(`Client connected: ${socketId}`);
 
   ws.on('message', (data: Buffer) => {
+    const ctx = createContext(ws, socketId);
+    
     try {
       const message: ClientMessage = JSON.parse(data.toString());
       console.log(`[${socketId}] Received:`, message.type);
 
       switch (message.type) {
-        case 'CREATE_ROOM': {
-          const result = gameManager.createRoom(socketId, message.playerName);
-          send(ws, {
-            type: 'ROOM_CREATED',
-            roomCode: result.room.code,
-            playerId: result.playerId,
-          });
-          console.log(`Room created: ${result.room.code} by ${message.playerName}`);
-          break;
-        }
-
-        case 'JOIN_ROOM': {
-          const result = gameManager.joinRoom(socketId, message.roomCode, message.playerName);
-          if ('error' in result) {
-            send(ws, { type: 'ERROR', message: result.error });
-          } else {
-            // Send join confirmation to new player
-            send(ws, {
-              type: 'ROOM_JOINED',
-              roomCode: result.room.code,
-              playerId: result.playerId,
-              players: result.room.players,
-            });
-            // Notify other players
-            broadcast(result.room.code, {
-              type: 'PLAYER_JOINED',
-              player: result.room.players.find(p => p.id === result.playerId)!,
-            }, socketId);
-            console.log(`${message.playerName} joined room ${message.roomCode}`);
-          }
-          break;
-        }
-
-        case 'LEAVE_ROOM': {
-          const result = gameManager.leaveRoom(socketId);
-          if (result.room && result.leftPlayerId) {
-            broadcast(result.room.code, {
-              type: 'PLAYER_LEFT',
-              playerId: result.leftPlayerId,
-            });
-          }
-          break;
-        }
-
-        case 'SET_READY': {
-          const room = gameManager.setReady(socketId, message.ready);
-          if (room) {
-            const playerId = gameManager.getPlayerIdBySocket(socketId);
-            broadcast(room.code, {
-              type: 'PLAYER_READY',
-              playerId: playerId!,
-              ready: message.ready,
-            });
-          }
-          break;
-        }
-
-        case 'ADD_BOT': {
-          const result = gameManager.addBot(socketId, message.botName);
-          if ('error' in result) {
-            send(ws, { type: 'ERROR', message: result.error });
-          } else {
-            // Notify all players in the room about the new bot
-            broadcast(result.room.code, {
-              type: 'PLAYER_JOINED',
-              player: result.bot,
-            });
-            console.log(`Bot ${result.bot.name} added to room ${result.room.code}`);
-          }
-          break;
-        }
-
-        case 'START_GAME': {
-          const result = gameManager.startGame(socketId);
-          if ('error' in result) {
-            send(ws, { type: 'ERROR', message: result.error });
-          } else {
-            // Send game started to all players with their sanitized view
-            for (const player of result.room.players) {
-              const playerWs = connections.get(player.socketId);
-              if (playerWs) {
-                const sanitizedGame = gameManager.getGameForPlayer(result.game, player.id);
-                send(playerWs, {
-                  type: 'GAME_STARTED',
-                  game: sanitizedGame as MultiplayerGame,
-                  yourPlayerId: player.id,
-                });
-              }
-            }
-            console.log(`Game started in room ${result.room.code}`);
-
-            // If game starts in topicSelect phase with a bot selector, auto-select topic
-            if (result.game.phase === 'topicSelect') {
+        // Auto-matchmaking
+        case 'FIND_GAME': {
+          const result = handleFindGame(ctx, message);
+          // If we have enough players, auto-start the game
+          if (result.shouldStartGame && !result.game) {
+            const startResult = autoStartGameIfReady(ctx, result.roomCode);
+            if (startResult && startResult.game.phase === 'topicSelect') {
+              // Schedule bot topic selection if needed
               setTimeout(() => {
-                const topicResult = gameManager.processBotTopicSelection(result.room.code);
+                const topicResult = gameManager.processBotTopicSelection(result.roomCode);
                 if (topicResult) {
-                  broadcastGameState(result.room.code, topicResult.game);
-                  // After topic selection, check if it's a bot's turn
-                  if (topicResult.game.phase === 'playing') {
-                    setTimeout(() => {
-                      const botTurnResult = gameManager.processBotTurn(result.room.code);
-                      if (botTurnResult) {
-                        broadcastGameState(result.room.code, botTurnResult.game);
-                      }
-                    }, 1500);
-                  }
+                  const { broadcastGameState } = require('./handlers');
+                  broadcastGameState(ctx, result.roomCode, topicResult.game);
                 }
-              }, 1500); // 1.5 second delay for players to see the phase
+              }, 1500);
             }
           }
           break;
         }
 
+        // Lobby messages
+        case 'CREATE_ROOM':
+          handleCreateRoom(ctx, message);
+          break;
+        case 'JOIN_ROOM':
+          handleJoinRoom(ctx, message);
+          break;
+        case 'RECONNECT':
+          handleReconnect(ctx, message);
+          break;
+        case 'LIST_ROOMS':
+          handleListRooms(ctx);
+          break;
+        case 'LEAVE_ROOM':
+          handleLeaveRoom(ctx);
+          break;
+        case 'SET_READY':
+          handleSetReady(ctx, message);
+          break;
+        case 'ADD_BOT':
+          handleAddBot(ctx, message);
+          break;
+
+        // Game messages
+        case 'START_GAME':
+          handleStartGame(ctx);
+          break;
         case 'REVEAL_TURN_ORDER_CARD':
         case 'SELECT_TOPIC':
         case 'PLAY_CARD':
@@ -196,231 +174,39 @@ wss.on('connection', (ws: WebSocket) => {
         case 'SUBMIT_TURN':
         case 'VOTE':
         case 'PASS_TURN':
-        case 'UNDO': {
-          const result = gameManager.handleAction(socketId, message);
-          if (result && 'error' in result) {
-            send(ws, { type: 'ERROR', message: result.error });
-          } else if (result) {
-            broadcastGameState(result.room.code, result.game);
-
-            // After SUBMIT_TURN, trigger bot voting with a small delay
-            if (message.type === 'SUBMIT_TURN' && result.game.phase === 'verification') {
-              setTimeout(() => {
-                const botResult = gameManager.processBotVotes(result.room.code);
-                if (botResult) {
-                  broadcastGameState(result.room.code, botResult.game);
-                  // After bot voting, check if we're now in topicSelect
-                  if (botResult.game.phase === 'topicSelect') {
-                    setTimeout(() => {
-                      const topicResult = gameManager.processBotTopicSelection(result.room.code);
-                      if (topicResult) {
-                        broadcastGameState(result.room.code, topicResult.game);
-                      }
-                    }, 1000);
-                  }
-                }
-              }, 1000); // 1 second delay for dramatic effect
-            }
-
-            // After any action, if game is in topicSelect, check for bot topic selection
-            if (result.game.phase === 'topicSelect') {
-              setTimeout(() => {
-                const topicResult = gameManager.processBotTopicSelection(result.room.code);
-                if (topicResult) {
-                  broadcastGameState(result.room.code, topicResult.game);
-                  // After topic selection, if we're in playing phase, check for bot turn
-                  if (topicResult.game.phase === 'playing') {
-                    setTimeout(() => {
-                      const botTurnResult = gameManager.processBotTurn(result.room.code);
-                      if (botTurnResult) {
-                        broadcastGameState(result.room.code, botTurnResult.game);
-                      }
-                    }, 1500);
-                  }
-                }
-              }, 1000);
-            }
-
-            // After any action that leaves us in playing phase, check if it's a bot's turn
-            if (result.game.phase === 'playing') {
-              setTimeout(() => {
-                const botTurnResult = gameManager.processBotTurn(result.room.code);
-                if (botTurnResult) {
-                  broadcastGameState(result.room.code, botTurnResult.game);
-                }
-              }, 1500); // 1.5 second delay for dramatic effect
-            }
-          }
+        case 'UNDO':
+          handleGameAction(ctx, message);
           break;
-        }
-
-        case 'CONFIRM_TURN_END': {
-          const result = gameManager.confirmTurnEnd(socketId);
-          if ('error' in result) {
-            send(ws, { type: 'ERROR', message: result.error });
-          } else {
-            broadcastGameState(result.room.code, result.game);
-          }
+        case 'CONFIRM_TURN_END':
+          handleConfirmTurnEnd(ctx);
           break;
-        }
 
-        case 'CHAT': {
-          const roomCode = gameManager.getRoomCodeBySocket(socketId);
-          const playerId = gameManager.getPlayerIdBySocket(socketId);
-          const playerName = gameManager.getPlayerNameBySocket(socketId);
-          if (roomCode && playerId && playerName) {
-            const chatMessage: ChatMessage = {
-              id: `chat-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              playerId,
-              playerName,
-              content: message.content.slice(0, 200), // Limit message length
-              isReaction: false,
-              timestamp: Date.now(),
-            };
-            broadcast(roomCode, { type: 'CHAT_MESSAGE', message: chatMessage });
-            console.log(`[${roomCode}] ${playerName}: ${chatMessage.content}`);
-          }
+        // Chat messages
+        case 'CHAT':
+          handleChat(ctx, message);
           break;
-        }
-
-        case 'REACTION': {
-          const roomCode = gameManager.getRoomCodeBySocket(socketId);
-          const playerId = gameManager.getPlayerIdBySocket(socketId);
-          const playerName = gameManager.getPlayerNameBySocket(socketId);
-          if (roomCode && playerId && playerName) {
-            const chatMessage: ChatMessage = {
-              id: `react-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              playerId,
-              playerName,
-              content: message.emoji,
-              isReaction: true,
-              timestamp: Date.now(),
-            };
-            broadcast(roomCode, { type: 'CHAT_MESSAGE', message: chatMessage });
-            console.log(`[${roomCode}] ${playerName} reacted: ${message.emoji}`);
-          }
+        case 'REACTION':
+          handleReaction(ctx, message);
           break;
-        }
 
-        case 'PING': {
+        // Voice messages
+        case 'VOICE_JOIN':
+          handleVoiceJoin(ctx);
+          break;
+        case 'VOICE_LEAVE':
+          handleVoiceLeave(ctx);
+          break;
+        case 'VOICE_SIGNAL':
+          handleVoiceSignal(ctx, message);
+          break;
+        case 'VOICE_MUTE':
+          handleVoiceMute(ctx, message);
+          break;
+
+        // Utility
+        case 'PING':
           send(ws, { type: 'PONG' });
           break;
-        }
-
-        case 'VOICE_JOIN': {
-          const roomCode = gameManager.getRoomCodeBySocket(socketId);
-          const playerId = gameManager.getPlayerIdBySocket(socketId);
-          const playerName = gameManager.getPlayerNameBySocket(socketId);
-          if (roomCode && playerId && playerName) {
-            // Add to voice participants
-            if (!voiceParticipants.has(roomCode)) {
-              voiceParticipants.set(roomCode, new Set());
-            }
-            const participants = voiceParticipants.get(roomCode)!;
-
-            // Notify existing voice participants about new joiner
-            for (const existingSocketId of participants) {
-              const existingWs = connections.get(existingSocketId);
-              if (existingWs) {
-                send(existingWs, {
-                  type: 'VOICE_PEER_JOINED',
-                  playerId,
-                  playerName,
-                });
-              }
-              // Also tell the new joiner about existing participants
-              const existingPlayerId = gameManager.getPlayerIdBySocket(existingSocketId);
-              const existingPlayerName = gameManager.getPlayerNameBySocket(existingSocketId);
-              if (existingPlayerId && existingPlayerName) {
-                send(ws, {
-                  type: 'VOICE_PEER_JOINED',
-                  playerId: existingPlayerId,
-                  playerName: existingPlayerName,
-                });
-              }
-            }
-
-            participants.add(socketId);
-            voiceMuteState.set(socketId, false);
-            console.log(`[${roomCode}] ${playerName} joined voice chat (${participants.size} in voice)`);
-          }
-          break;
-        }
-
-        case 'VOICE_LEAVE': {
-          const roomCode = gameManager.getRoomCodeBySocket(socketId);
-          const playerId = gameManager.getPlayerIdBySocket(socketId);
-          const playerName = gameManager.getPlayerNameBySocket(socketId);
-          if (roomCode && playerId) {
-            const participants = voiceParticipants.get(roomCode);
-            if (participants) {
-              participants.delete(socketId);
-              voiceMuteState.delete(socketId);
-
-              // Notify remaining participants
-              for (const otherSocketId of participants) {
-                const otherWs = connections.get(otherSocketId);
-                if (otherWs) {
-                  send(otherWs, { type: 'VOICE_PEER_LEFT', playerId });
-                }
-              }
-              console.log(`[${roomCode}] ${playerName} left voice chat (${participants.size} in voice)`);
-            }
-          }
-          break;
-        }
-
-        case 'VOICE_SIGNAL': {
-          // Relay WebRTC signal to target player
-          const fromPlayerId = gameManager.getPlayerIdBySocket(socketId);
-          const roomCode = gameManager.getRoomCodeBySocket(socketId);
-          if (fromPlayerId && roomCode) {
-            // Find the target player's socket
-            const participants = voiceParticipants.get(roomCode);
-            if (participants) {
-              for (const otherSocketId of participants) {
-                const otherPlayerId = gameManager.getPlayerIdBySocket(otherSocketId);
-                if (otherPlayerId === message.toPlayerId) {
-                  const targetWs = connections.get(otherSocketId);
-                  if (targetWs) {
-                    send(targetWs, {
-                      type: 'VOICE_SIGNAL',
-                      fromPlayerId,
-                      signal: message.signal,
-                    });
-                  }
-                  break;
-                }
-              }
-            }
-          }
-          break;
-        }
-
-        case 'VOICE_MUTE': {
-          const roomCode = gameManager.getRoomCodeBySocket(socketId);
-          const playerId = gameManager.getPlayerIdBySocket(socketId);
-          if (roomCode && playerId) {
-            voiceMuteState.set(socketId, message.isMuted);
-            const participants = voiceParticipants.get(roomCode);
-            if (participants) {
-              // Broadcast mute state to all voice participants
-              for (const otherSocketId of participants) {
-                if (otherSocketId !== socketId) {
-                  const otherWs = connections.get(otherSocketId);
-                  if (otherWs) {
-                    send(otherWs, {
-                      type: 'VOICE_MUTE_CHANGED',
-                      playerId,
-                      isMuted: message.isMuted,
-                    });
-                  }
-                }
-              }
-            }
-          }
-          break;
-        }
 
         default:
           console.log(`[${socketId}] Unknown message type:`, (message as { type: string }).type);
@@ -435,30 +221,33 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('close', (code, reason) => {
     console.log(`Client disconnected: ${socketId} (code: ${code}, reason: ${reason?.toString() || 'none'})`);
 
+    const ctx = createContext(ws, socketId);
+    
     // Clean up voice chat
-    const roomCodeForVoice = gameManager.getRoomCodeBySocket(socketId);
-    const playerIdForVoice = gameManager.getPlayerIdBySocket(socketId);
-    if (roomCodeForVoice && playerIdForVoice) {
-      const participants = voiceParticipants.get(roomCodeForVoice);
-      if (participants && participants.has(socketId)) {
-        participants.delete(socketId);
-        voiceMuteState.delete(socketId);
-        // Notify remaining voice participants
-        for (const otherSocketId of participants) {
-          const otherWs = connections.get(otherSocketId);
-          if (otherWs) {
-            send(otherWs, { type: 'VOICE_PEER_LEFT', playerId: playerIdForVoice });
-          }
-        }
-      }
-    }
+    cleanupVoiceOnDisconnect(ctx);
 
-    const result = gameManager.leaveRoom(socketId);
-    if (result.room && result.leftPlayerId) {
-      broadcast(result.room.code, {
-        type: 'PLAYER_LEFT',
-        playerId: result.leftPlayerId,
-      });
+    // Track player for potential reconnection
+    const disconnectedPlayer = gameManager.handlePlayerDisconnect(socketId);
+    
+    if (disconnectedPlayer) {
+      // Notify other players about disconnection
+      const room = gameManager.getRoom(disconnectedPlayer.roomCode);
+      if (room) {
+        broadcast(ctx, disconnectedPlayer.roomCode, {
+          type: 'PLAYER_DISCONNECTED',
+          playerId: disconnectedPlayer.playerId,
+          playerName: disconnectedPlayer.playerName,
+        }, socketId);
+      }
+    } else {
+      // Not tracking this player - fully remove them
+      const result = gameManager.leaveRoom(socketId);
+      if (result.room && result.leftPlayerId) {
+        broadcast(ctx, result.room.code, {
+          type: 'PLAYER_LEFT',
+          playerId: result.leftPlayerId,
+        });
+      }
     }
     connections.delete(socketId);
   });
@@ -479,6 +268,9 @@ setInterval(() => {
   for (const roomCode of deletedRooms) {
     voiceParticipants.delete(roomCode);
   }
+
+  // Clean up expired reconnection entries
+  gameManager.cleanupDisconnectedPlayers();
 
   // Log stats periodically
   const stats = gameManager.getRoomStats();

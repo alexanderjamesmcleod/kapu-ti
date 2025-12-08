@@ -19,6 +19,10 @@ export default function OnlinePlayPage() {
     players,
     isHost,
 
+    // Turn timer
+    turnTimeRemaining,
+    currentTurnPlayerId,
+
     // Game state
     game,
     currentSentence,
@@ -80,6 +84,8 @@ export default function OnlinePlayPage() {
       playerId={playerId}
       currentSentence={currentSentence}
       isMyTurn={isMyTurn}
+      turnTimeRemaining={turnTimeRemaining}
+      currentTurnPlayerId={currentTurnPlayerId}
       onPlayCard={playCard}
       onCreateSlot={createSlot}
       onSubmitTurn={submitTurn}

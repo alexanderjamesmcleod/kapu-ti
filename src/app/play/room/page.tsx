@@ -35,13 +35,6 @@ interface ActiveGame {
   spectators: number;
 }
 
-// Mock active games for browse
-const MOCK_ACTIVE_GAMES: ActiveGame[] = [
-  { code: 'KAHU', name: 'Whānau Night', players: 4, maxPlayers: 6, status: 'playing', spectators: 2 },
-  { code: 'MAIA', name: 'Beginners Welcome', players: 2, maxPlayers: 4, status: 'waiting', spectators: 0 },
-  { code: 'TANE', name: "Hemi's Table", players: 6, maxPlayers: 6, status: 'playing', spectators: 5 },
-];
-
 // Generate random room code
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -414,26 +407,20 @@ export default function RoomPage() {
               </div>
             </div>
 
+            {/* Main action - Play Online with auto-matchmaking */}
             <button
-              onClick={() => setPhase('create')}
-              className="w-full py-4 bg-teal-600 text-white rounded-xl font-bold text-lg hover:bg-teal-700 transition-colors shadow-md"
+              onClick={() => {
+                online.findGame(playerName);
+                setPhase('lobby');
+              }}
+              disabled={online.connectionState !== 'connected' || !playerName.trim()}
+              className="w-full py-5 bg-gradient-to-r from-teal-600 to-teal-500 text-white rounded-xl font-bold text-xl hover:from-teal-700 hover:to-teal-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              🎲 Create Room
+              🎮 Play Online
             </button>
-
-            <button
-              onClick={() => setPhase('join')}
-              className="w-full py-4 bg-amber-500 text-white rounded-xl font-bold text-lg hover:bg-amber-600 transition-colors shadow-md"
-            >
-              🚪 Join with Code
-            </button>
-
-            <button
-              onClick={() => setPhase('browse')}
-              className="w-full py-4 bg-purple-500 text-white rounded-xl font-bold text-lg hover:bg-purple-600 transition-colors shadow-md"
-            >
-              👁 Browse Games
-            </button>
+            <p className="text-center text-gray-500 text-sm -mt-2">
+              Auto-joins available table or creates new one
+            </p>
           </div>
         )}
 
@@ -441,39 +428,44 @@ export default function RoomPage() {
         {phase === 'browse' && (
           <div className="space-y-4">
             <div className="bg-white rounded-xl p-4 shadow-md">
-              <h2 className="font-bold text-gray-700 mb-4">Active Games</h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="font-bold text-gray-700">Active Games</h2>
+                <button
+                  onClick={() => online.listRooms()}
+                  className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
               <div className="space-y-3">
-                {MOCK_ACTIVE_GAMES.map(game => (
-                  <div key={game.code} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800">{game.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {game.players}/{game.maxPlayers} players
-                        {game.spectators > 0 && ` • ${game.spectators} watching`}
-                      </p>
+                {online.publicRooms.length === 0 ? (
+                  <p className="text-gray-500 text-center py-4">No games available. Create one!</p>
+                ) : (
+                  online.publicRooms.map(room => (
+                    <div key={room.code} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800">{room.hostName}&apos;s Room</p>
+                        <p className="text-sm text-gray-500">
+                          {room.playerCount}/{room.maxPlayers} players • {room.code}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold
+                                      ${room.hasGame ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {room.hasGame ? 'In Progress' : 'Waiting'}
+                      </span>
+                      <div className="flex gap-2">
+                        {!room.hasGame && room.playerCount < room.maxPlayers && (
+                          <button
+                            onClick={() => handleJoinRoom(room.code, false)}
+                            className="px-3 py-1 bg-teal-100 text-teal-700 rounded-lg text-sm font-semibold hover:bg-teal-200"
+                          >
+                            Join
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold
-                                    ${game.status === 'playing' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {game.status === 'playing' ? 'In Progress' : 'Waiting'}
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleJoinRoom(game.code, true)}
-                        className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold hover:bg-purple-200"
-                      >
-                        Watch
-                      </button>
-                      {game.status === 'waiting' && game.players < game.maxPlayers && (
-                        <button
-                          onClick={() => handleJoinRoom(game.code, false)}
-                          className="px-3 py-1 bg-teal-100 text-teal-700 rounded-lg text-sm font-semibold hover:bg-teal-200"
-                        >
-                          Join
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
 
@@ -567,19 +559,34 @@ export default function RoomPage() {
         {/* Lobby */}
         {phase === 'lobby' && (
           <div className="space-y-4">
-            <div className="bg-gradient-to-br from-teal-500 to-teal-700 rounded-xl p-4 shadow-md text-center">
-              <p className="text-teal-100 text-sm">Room Code</p>
-              <p className="text-4xl font-mono font-bold text-white tracking-widest">{roomCode}</p>
-              <p className="text-teal-200 text-sm mt-1">Share this code with friends</p>
-            </div>
+            {/* Waiting status */}
+            {online.isWaitingForPlayers && (
+              <div className="bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl p-4 shadow-md text-center">
+                <p className="text-white font-bold text-lg">⏳ Waiting for players...</p>
+                <p className="text-amber-100 text-sm mt-1">
+                  Game will start automatically when another player joins
+                </p>
+              </div>
+            )}
+
+            {!online.isWaitingForPlayers && !online.game && (
+              <div className="bg-gradient-to-br from-green-500 to-teal-500 rounded-xl p-4 shadow-md text-center">
+                <p className="text-white font-bold text-lg">🎮 Getting ready...</p>
+                <p className="text-green-100 text-sm mt-1">
+                  Game starting soon!
+                </p>
+              </div>
+            )}
+
+            {roomCode && (
+              <div className="bg-white/10 rounded-lg p-2 text-center">
+                <p className="text-gray-500 text-xs">Table Code (for debugging)</p>
+                <p className="text-gray-400 font-mono text-sm">{roomCode}</p>
+              </div>
+            )}
 
             <div className="bg-white rounded-xl p-4 shadow-md">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="font-bold text-gray-700">Players ({players.length}/{settings.maxPlayers})</h2>
-                {isHost && players.length < settings.maxPlayers && (
-                  <button onClick={addBotPlayer} className="text-sm text-teal-600 hover:text-teal-800">+ Add Bot</button>
-                )}
-              </div>
+              <h2 className="font-bold text-gray-700 mb-3">Players at Table ({players.length}/10)</h2>
               <div className="space-y-2">
                 {players.map(player => (
                   <div key={player.id} className={`flex items-center gap-3 p-2 rounded-lg ${isSelf(player.id) ? 'bg-teal-50' : 'bg-gray-50'}`}>
@@ -594,12 +601,6 @@ export default function RoomPage() {
                     <div className="px-2 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
                       Ready ✓
                     </div>
-                  </div>
-                ))}
-                {Array.from({ length: settings.maxPlayers - players.length }).map((_, i) => (
-                  <div key={`empty-${i}`} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 opacity-50">
-                    <div className="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">+</div>
-                    <p className="text-gray-400">Waiting for player...</p>
                   </div>
                 ))}
               </div>
@@ -617,18 +618,15 @@ export default function RoomPage() {
               />
             </div>
 
-            <div className="flex gap-3">
-              <button onClick={() => setPhase('menu')} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300">Leave</button>
-              {isHost && (
-                <button
-                  onClick={startGame}
-                  disabled={!canStart}
-                  className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {canStart ? 'Start Game! 🎮' : 'Waiting...'}
-                </button>
-              )}
-            </div>
+            <button
+              onClick={() => {
+                online.leaveRoom();
+                setPhase('menu');
+              }}
+              className="w-full py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300"
+            >
+              Leave Table
+            </button>
 
             {/* Chat Panel for lobby */}
             <div className="mt-4">
@@ -767,12 +765,24 @@ export default function RoomPage() {
             {/* ===== PLAYING PHASE (and other phases like verification, turnEnd) ===== */}
             {online.game.phase !== 'topicSelect' && (
               <>
-                {/* Turn indicator - compact */}
+                {/* Turn indicator with timer */}
                 <div className="mb-2 flex items-center justify-between text-xs flex-shrink-0">
                   <span className="text-teal-400">{online.game.phase}</span>
-                  <span className={online.isMyTurn ? 'text-amber-400 font-bold' : 'text-gray-500'}>
-                    {online.isMyTurn ? '🎯 Your turn!' : `${online.game.players[online.game.currentPlayerIndex]?.name}'s turn`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={online.isMyTurn ? 'text-amber-400 font-bold' : 'text-gray-500'}>
+                      {online.isMyTurn ? '🎯 Your turn!' : `${online.game.players[online.game.currentPlayerIndex]?.name}'s turn`}
+                    </span>
+                    {/* Turn timer - shows when <= 10 seconds */}
+                    {online.turnTimeRemaining !== null && online.turnTimeRemaining <= 10 && online.game.phase === 'playing' && (
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
+                        online.turnTimeRemaining <= 5 
+                          ? 'bg-red-500 text-white animate-pulse' 
+                          : 'bg-amber-500 text-white'
+                      }`}>
+                        {online.turnTimeRemaining}s
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <GameTable

@@ -4,6 +4,9 @@
 
 import type { Card } from './index';
 
+// Player connection status
+export type PlayerConnectionStatus = 'connected' | 'disconnected' | 'away';
+
 // Player in the game
 export interface Player {
   id: string;
@@ -11,6 +14,8 @@ export interface Player {
   hand: Card[];
   isActive: boolean;    // false = left game (emptied hand)
   position: number;     // 0-3 for table position
+  connectionStatus?: PlayerConnectionStatus;  // Online status
+  consecutiveAutoSkips?: number;              // Track AFK behavior
 }
 
 // A slot on the table (stack of cards)
@@ -77,6 +82,9 @@ export interface MultiplayerGame {
   verificationVotes: VerificationVote[];
   winnersInOrder: string[];         // Player IDs in order they won
   loserId: string | null;           // The one who makes tea!
+  // Turn timer
+  turnStartedAt?: number;           // Timestamp when current turn started
+  turnTimeLimit?: number;           // Seconds allowed per turn (default 30)
   // Turn order phase
   turnOrderCards?: TurnOrderCard[]; // One per player, index matches player index
   turnOrderWinner?: number;         // Player index who had highest card
