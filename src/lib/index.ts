@@ -8,3 +8,6 @@ export * from './keiTeValidator';
 
 // Audio utilities
 export * from './audio';
+
+// Pattern helpers
+export * from './patternHelpers';

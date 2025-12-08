@@ -12,3 +12,6 @@ export * from './curriculum';
 
 // Topics & Sentence Generation
 export * from './topics';
+
+// Sentence patterns
+export * from './sentencePatterns';

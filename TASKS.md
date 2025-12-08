@@ -43,14 +43,27 @@
 - [x] Identified verb types (transitive via passive suffixes)
 - [x] Detected possession categories (a/o) where available
 
+### Audio Playback (2025-12-09) ✅
+- [x] Created `useAudio` hook for audio playback
+- [x] Enhanced `wordLibrary.ts` with `getAudioUrl()` function
+- [x] Audio lookup now supports all 222 vocabulary words (was 10 hardcoded)
+- [x] Card component already had audio UI - just needed better data layer
+
+### Vocabulary Classification (2025-12-09) ✅
+- [x] Created classification script (`scripts/classify-vocabulary.ts`)
+- [x] All 222 words classified with partOfSpeech, category, color
+- [x] Added 47 essential grammar words (`src/data/grammarWords.ts`)
+- [x] Created `vocabulary-classified.json` ready to activate
+- [x] Updated `wordLibrary.ts` with category-based filtering functions
+
 ---
 
 ## Current Sprint: Sentence Pattern Refactor
 
-### Task 1: Document Sentence Patterns
-- [ ] Define sentence pattern schema
-- [ ] Create pattern examples for each topic
-- [ ] Document color-to-word-type mapping
+### Task 1: Document Sentence Patterns ✅ COMPLETE
+- [x] Define sentence pattern schema (`src/types/sentencePattern.types.ts`)
+- [x] Create pattern examples for each topic (8 patterns in `src/data/sentencePatterns.ts`)
+- [x] Document color-to-word-type mapping (11 word types with bidirectional mapping)
 
 ### Task 2: Server-Side Pattern Generation
 - [ ] Modify `server/game-logic.ts` to generate pre-filled patterns
@@ -146,3 +159,11 @@
 - Audio URLs tested and working (HTTP 200, audio/mpeg)
 - Data includes: word, english, isVerb, possession, audioUrl
 - Created `scripts/scrape-vocabulary.ts` for future updates
+
+### 2025-12-09 (Session 3 - Parallel CC Tasks)
+- Ran 3 CC subagents in parallel via AI Kitchen
+- **Audio Playback**: useAudio hook, expanded audio lookup to 222 words
+- **Sentence Patterns**: 8 patterns, 7 helper functions, full type system
+- **Vocabulary Classification**: 222 words classified, 47 grammar words added
+- All tasks completed and moved to kitchen/REVIEW/
+- Total new code: ~1000+ lines across multiple files

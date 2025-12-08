@@ -21,3 +21,13 @@ export type {
   WordBreakdown,
   ValidationResult
 } from './validation.types';
+
+// Sentence pattern types
+export type {
+  WordType,
+  PatternSlot,
+  SentencePattern,
+  PatternInstance,
+  PatternSlotInstance
+} from './sentencePattern.types';
+export { COLOR_TO_TYPE, TYPE_TO_COLOR } from './sentencePattern.types';

@@ -4,9 +4,13 @@
  * Ported from v3: te-reo-card-game/src/data/wordLibrary.js
  *
  * All words include NZSL placeholders for Phase 4 integration
+ *
+ * UPDATED: Now integrates with classified vocabulary.json (222 words)
+ * and grammarWords.ts (essential grammar words)
  */
 
 import vocabularyData from '../../data/vocabulary.json';
+import { ALL_GRAMMAR_WORDS, type GrammarWord } from './grammarWords';
 
 export interface Word {
   id: string;
@@ -14,8 +18,8 @@ export interface Word {
   english: string;
   type: string;
   color: string;
-  pronunciation: string;
-  module: number;
+  pronunciation?: string;
+  module?: number;
   nzsl_video_url?: string | null;
   nzsl_description?: string | null;
   usage?: string;
@@ -28,6 +32,9 @@ export interface Word {
   breakdown?: string;
   distance?: string;
   person?: string;
+  category?: string;
+  verbType?: string;
+  audioUrl?: string | null;
 }
 
 // Create audio URL lookup map from vocabulary.json
@@ -46,6 +53,79 @@ vocabularyData.words.forEach((w: { word: string; audioUrl: string }) => {
 export function getAudioUrl(maoriWord: string): string | undefined {
   const normalized = maoriWord.toLowerCase().trim();
   return audioMap.get(normalized);
+}
+
+/**
+ * Cleans a word by removing passive suffix hints and parenthetical notes
+ * Example: "kai(nga)" → "kai", "rongo (rangona)" → "rongo"
+ */
+export function cleanWord(word: string): string {
+  return word
+    .replace(/\s*\([^)]*\)\s*/g, '') // Remove (passive) hints
+    .replace(/\s*\/\s*\S+/g, '') // Remove alternatives like "matua / mātua" → "matua"
+    .trim();
+}
+
+/**
+ * Generates a unique word ID from the Māori word
+ */
+export function generateWordId(word: string): string {
+  const cleaned = cleanWord(word);
+  const normalized = cleaned.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  return `voc_${normalized}`;
+}
+
+/**
+ * Converts a grammar word to Word interface
+ */
+export function grammarWordToWord(gw: GrammarWord): Word {
+  return {
+    id: generateWordId(gw.word),
+    maori: gw.word,
+    english: gw.english,
+    type: gw.partOfSpeech,
+    color: gw.color,
+    category: gw.category,
+    usage: gw.usage,
+    examples: gw.examples?.map(ex => ({ maori: ex, english: '' })),
+    audioUrl: getAudioUrl(gw.word),
+  };
+}
+
+/**
+ * Converts vocabulary.json entries to Word interface
+ * Handles both classified and unclassified vocabulary
+ */
+export function vocabularyToWord(voc: any): Word {
+  const cleaned = cleanWord(voc.word);
+
+  return {
+    id: generateWordId(voc.word),
+    maori: cleaned,
+    english: voc.english,
+    type: voc.partOfSpeech || (voc.isVerb ? 'verb' : 'noun'),
+    color: voc.color || (voc.isVerb ? 'green' : 'blue'),
+    category: voc.category || 'general',
+    verbType: voc.verbType,
+    audioUrl: voc.audioUrl,
+  };
+}
+
+/**
+ * Get all words from classified vocabulary
+ * Filters to only include words with proper classifications
+ */
+export function getClassifiedVocabularyWords(): Word[] {
+  return vocabularyData.words
+    .filter((w: any) => w.partOfSpeech) // Only classified words
+    .map(vocabularyToWord);
+}
+
+/**
+ * Get all grammar words as Word objects
+ */
+export function getGrammarWords(): Word[] {
+  return ALL_GRAMMAR_WORDS.map(grammarWordToWord);
 }
 
 // Module 1: Tūāpapa (Foundations) - Ko/He Sentences
@@ -999,6 +1079,49 @@ export function getWordsByModule(moduleNumber: number): Word[] {
   return ALL_WORDS.filter(w => w.module === moduleNumber);
 }
 
+export function getWordsByCategory(category: string): Word[] {
+  return ALL_WORDS.filter(w => w.category === category);
+}
+
+/**
+ * Combined vocabulary: Manual curriculum + Classified vocabulary + Grammar words
+ * This provides access to all 222+ words from vocabulary.json plus essential grammar
+ */
+export const VOCABULARY_CLASSIFIED_WORDS = getClassifiedVocabularyWords();
+export const VOCABULARY_GRAMMAR_WORDS = getGrammarWords();
+
+/**
+ * ALL_VOCABULARY_WORDS: Complete word set
+ * Combines manually curated curriculum words with classified vocabulary
+ */
+export const ALL_VOCABULARY_WORDS: Word[] = [
+  ...ALL_WORDS, // Manual curriculum (Modules 1-3)
+  ...VOCABULARY_CLASSIFIED_WORDS, // From classified vocabulary.json
+  ...VOCABULARY_GRAMMAR_WORDS, // Essential grammar words
+];
+
+/**
+ * Get unique words (deduplicated by Māori word)
+ * Prefers manually curated words over auto-generated ones
+ */
+export function getUniqueVocabularyWords(): Word[] {
+  const wordMap = new Map<string, Word>();
+
+  // Add in priority order (first wins)
+  [
+    ...ALL_WORDS,
+    ...VOCABULARY_GRAMMAR_WORDS,
+    ...VOCABULARY_CLASSIFIED_WORDS,
+  ].forEach(word => {
+    const key = word.maori.toLowerCase();
+    if (!wordMap.has(key)) {
+      wordMap.set(key, word);
+    }
+  });
+
+  return Array.from(wordMap.values());
+}
+
 // Default export for convenience
 export default {
   WORDS_MODULE_1,
@@ -1008,8 +1131,15 @@ export default {
   MODULE_2_ALL_WORDS,
   MODULE_3_ALL_WORDS,
   ALL_WORDS,
+  VOCABULARY_CLASSIFIED_WORDS,
+  VOCABULARY_GRAMMAR_WORDS,
+  ALL_VOCABULARY_WORDS,
   getWordById,
   getWordsByType,
   getWordsByColor,
-  getWordsByModule
+  getWordsByModule,
+  getWordsByCategory,
+  getUniqueVocabularyWords,
+  getClassifiedVocabularyWords,
+  getGrammarWords,
 };
