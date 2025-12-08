@@ -13,62 +13,62 @@ interface CardProps {
   onClick?: (card: CardType) => void;
 }
 
-// Color classes for each word type
+// Color classes for each word type - BOLD and DISTINCT for pattern recognition
 const colorClasses: Record<string, { bg: string; border: string; text: string }> = {
   purple: {
-    bg: 'bg-purple-100',
-    border: 'border-purple-400',
-    text: 'text-purple-800',
+    bg: 'bg-purple-400',        // Particles - vibrant purple
+    border: 'border-purple-600',
+    text: 'text-white',
   },
   gray: {
-    bg: 'bg-gray-100',
-    border: 'border-gray-400',
-    text: 'text-gray-800',
+    bg: 'bg-slate-400',         // Articles - cool gray
+    border: 'border-slate-600',
+    text: 'text-white',
   },
   blue: {
-    bg: 'bg-blue-100',
-    border: 'border-blue-400',
-    text: 'text-blue-800',
+    bg: 'bg-blue-500',          // Nouns - strong blue
+    border: 'border-blue-700',
+    text: 'text-white',
   },
   red: {
-    bg: 'bg-red-100',
-    border: 'border-red-400',
-    text: 'text-red-800',
+    bg: 'bg-red-500',           // Pronouns - bold red
+    border: 'border-red-700',
+    text: 'text-white',
   },
   green: {
-    bg: 'bg-green-100',
-    border: 'border-green-400',
-    text: 'text-green-800',
+    bg: 'bg-emerald-500',       // Verbs - rich emerald green
+    border: 'border-emerald-700',
+    text: 'text-white',
   },
   lightblue: {
-    bg: 'bg-sky-100',
-    border: 'border-sky-400',
-    text: 'text-sky-800',
+    bg: 'bg-cyan-400',          // Adjectives - bright cyan (distinct from blue)
+    border: 'border-cyan-600',
+    text: 'text-cyan-900',
   },
   yellow: {
-    bg: 'bg-yellow-100',
-    border: 'border-yellow-400',
-    text: 'text-yellow-800',
+    bg: 'bg-yellow-400',        // Tense markers - bright yellow
+    border: 'border-yellow-600',
+    text: 'text-yellow-900',
   },
   orange: {
-    bg: 'bg-orange-100',
-    border: 'border-orange-400',
-    text: 'text-orange-800',
+    bg: 'bg-orange-500',        // Demonstratives - vivid orange
+    border: 'border-orange-700',
+    text: 'text-white',
   },
   pink: {
-    bg: 'bg-pink-100',
-    border: 'border-pink-400',
-    text: 'text-pink-800',
+    bg: 'bg-pink-400',          // Intensifiers - bright pink
+    border: 'border-pink-600',
+    text: 'text-pink-900',
   },
   brown: {
-    bg: 'bg-amber-100',
-    border: 'border-amber-600',
-    text: 'text-amber-800',
+    bg: 'bg-amber-700',         // Locatives - deep brown/amber
+    border: 'border-amber-900',
+    text: 'text-white',
   },
   teal: {
-    bg: 'bg-teal-100',
-    border: 'border-teal-400',
-    text: 'text-teal-800',
+    bg: 'bg-indigo-400',        // Time words - indigo (distinct from green/blue)
+    border: 'border-indigo-600',
+    text: 'text-white',
   },
 };
 
@@ -151,17 +151,16 @@ export function Card({
       </div>
 
       {/* Translation */}
-      <div className="text-gray-600 text-center italic text-[0.65rem] leading-tight px-1">
+      <div className={`${colors.text} opacity-80 text-center italic text-[0.65rem] leading-tight px-1`}>
         {showEnglish ? card.maori : card.english}
       </div>
 
       {/* Word type badge */}
       <div
         className={`
-          text-[0.5rem] uppercase tracking-wider font-medium
-          ${colors.text} opacity-70
+          text-[0.5rem] uppercase tracking-wider font-semibold
           px-2 py-0.5 rounded-full
-          ${colors.bg} border ${colors.border}
+          bg-white/30 ${colors.text}
         `}
       >
         {card.type.replace('_', ' ')}

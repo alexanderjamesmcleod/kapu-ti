@@ -3,6 +3,7 @@
 import type { TableSlot, TurnState } from '@/types/multiplayer.types';
 import type { Card as CardType } from '@/types';
 import { getTopCard, canPlayCardOnSlot, canCreateSlot } from '@/types/multiplayer.types';
+import { Card } from './Card';
 
 interface MultiplayerSentenceBuilderProps {
   tableSlots: TableSlot[];
@@ -14,19 +15,19 @@ interface MultiplayerSentenceBuilderProps {
   onCreateSlot: () => void;
 }
 
-// Slot color classes matching card colors
+// Slot color classes for empty slots - matches Card component bold colors
 const slotColors: Record<string, { bg: string; border: string; indicator: string; text: string }> = {
-  purple: { bg: 'bg-purple-500/30', border: 'border-purple-400', indicator: 'bg-purple-400', text: 'text-purple-200' },
-  gray: { bg: 'bg-gray-500/30', border: 'border-gray-400', indicator: 'bg-gray-400', text: 'text-gray-200' },
-  blue: { bg: 'bg-blue-500/30', border: 'border-blue-400', indicator: 'bg-blue-400', text: 'text-blue-200' },
-  red: { bg: 'bg-red-500/30', border: 'border-red-400', indicator: 'bg-red-400', text: 'text-red-200' },
-  green: { bg: 'bg-green-500/30', border: 'border-green-400', indicator: 'bg-green-400', text: 'text-green-200' },
-  lightblue: { bg: 'bg-sky-500/30', border: 'border-sky-400', indicator: 'bg-sky-400', text: 'text-sky-200' },
-  yellow: { bg: 'bg-yellow-500/30', border: 'border-yellow-400', indicator: 'bg-yellow-400', text: 'text-yellow-200' },
-  orange: { bg: 'bg-orange-500/30', border: 'border-orange-400', indicator: 'bg-orange-400', text: 'text-orange-200' },
-  pink: { bg: 'bg-pink-500/30', border: 'border-pink-400', indicator: 'bg-pink-400', text: 'text-pink-200' },
-  brown: { bg: 'bg-amber-500/30', border: 'border-amber-500', indicator: 'bg-amber-500', text: 'text-amber-200' },
-  teal: { bg: 'bg-teal-500/30', border: 'border-teal-400', indicator: 'bg-teal-400', text: 'text-teal-200' },
+  purple: { bg: 'bg-purple-400/30', border: 'border-purple-500', indicator: 'bg-purple-400', text: 'text-purple-200' },
+  gray: { bg: 'bg-slate-400/30', border: 'border-slate-500', indicator: 'bg-slate-400', text: 'text-slate-200' },
+  blue: { bg: 'bg-blue-500/30', border: 'border-blue-600', indicator: 'bg-blue-500', text: 'text-blue-200' },
+  red: { bg: 'bg-red-500/30', border: 'border-red-600', indicator: 'bg-red-500', text: 'text-red-200' },
+  green: { bg: 'bg-emerald-500/30', border: 'border-emerald-600', indicator: 'bg-emerald-500', text: 'text-emerald-200' },
+  lightblue: { bg: 'bg-cyan-400/30', border: 'border-cyan-500', indicator: 'bg-cyan-400', text: 'text-cyan-200' },
+  yellow: { bg: 'bg-yellow-400/30', border: 'border-yellow-500', indicator: 'bg-yellow-400', text: 'text-yellow-200' },
+  orange: { bg: 'bg-orange-500/30', border: 'border-orange-600', indicator: 'bg-orange-500', text: 'text-orange-200' },
+  pink: { bg: 'bg-pink-400/30', border: 'border-pink-500', indicator: 'bg-pink-400', text: 'text-pink-200' },
+  brown: { bg: 'bg-amber-700/30', border: 'border-amber-700', indicator: 'bg-amber-700', text: 'text-amber-200' },
+  teal: { bg: 'bg-indigo-400/30', border: 'border-indigo-500', indicator: 'bg-indigo-400', text: 'text-indigo-200' },
 };
 
 // Word type labels
@@ -91,42 +92,53 @@ export function MultiplayerSentenceBuilder({
               key={slot.id}
               onClick={() => canPlay && onPlayCard(slot.id)}
               className={`
-                relative w-20 h-28 rounded-lg border-2
-                ${topCard ? 'bg-white border-gray-300' : `${colors.bg} border-dashed ${colors.border}`}
-                flex flex-col items-center justify-center
-                transition-all duration-200
-                ${canPlay ? 'cursor-pointer ring-2 ring-amber-400 scale-105 shadow-lg' : ''}
+                relative
+                ${canPlay ? 'cursor-pointer' : ''}
                 ${!topCard && !canPlay ? 'opacity-60' : ''}
               `}
             >
               {topCard ? (
-                // Show card
-                <div className="flex flex-col items-center gap-1 p-2">
-                  <span className="text-lg font-bold text-gray-800">{topCard.maori}</span>
-                  <span className="text-xs text-gray-500">{topCard.english}</span>
+                // Show the actual Card component - always fully visible
+                <div className="relative">
+                  <Card
+                    card={topCard}
+                    size="sm"
+                  />
                   {/* Stack indicator */}
                   {slot.cards.length > 1 && (
                     <div className="absolute -top-2 -right-2 w-5 h-5 bg-teal-500 text-white
-                                  rounded-full flex items-center justify-center text-xs font-bold">
+                                  rounded-full flex items-center justify-center text-xs font-bold shadow z-10">
                       {slot.cards.length}
+                    </div>
+                  )}
+                  {/* Play here overlay for stacking */}
+                  {canPlay && (
+                    <div className="absolute inset-0 flex items-center justify-center
+                                  bg-amber-400/30 rounded-xl animate-pulse ring-2 ring-amber-400">
+                      <span className="text-2xl text-amber-600 font-bold">+</span>
                     </div>
                   )}
                 </div>
               ) : (
                 // Empty slot
-                <div className="flex flex-col items-center gap-1">
+                <div className={`
+                  w-20 h-28 rounded-lg border-2 border-dashed
+                  ${colors.bg} ${colors.border}
+                  flex flex-col items-center justify-center
+                  transition-all duration-200
+                  ${canPlay ? 'ring-2 ring-amber-400 scale-105 shadow-lg' : ''}
+                `}>
                   <div className={`w-8 h-8 rounded-full ${colors.indicator}`} />
                   <span className={`text-xs font-medium ${colors.text}`}>
                     {typeLabels[slot.color] || slot.color}
                   </span>
-                </div>
-              )}
-
-              {/* Play here indicator */}
-              {canPlay && (
-                <div className="absolute inset-0 flex items-center justify-center
-                              bg-amber-400/20 rounded-lg animate-pulse">
-                  <span className="text-2xl">+</span>
+                  {/* Play here indicator */}
+                  {canPlay && (
+                    <div className="absolute inset-0 flex items-center justify-center
+                                  bg-amber-400/20 rounded-lg animate-pulse">
+                      <span className="text-2xl">+</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

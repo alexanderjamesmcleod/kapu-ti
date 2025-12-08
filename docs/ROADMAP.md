@@ -164,7 +164,27 @@ Round 4 (morph): "Kei te tino matekai au" → "I am very hungry"
 - Hand panel positioned below table (not overlapping)
 - Spectator view
 - **Responsive scrolling:** Playing view scrolls when content exceeds viewport
-- **Brighter card colors:** Updated color palette for better visibility
+
+### Bold Card Color System (NEW!)
+Colors are critical for pattern recognition - players learn word types by color association.
+
+| Word Type | Color | Tailwind | Visual |
+|-----------|-------|----------|--------|
+| Particles | purple | `bg-purple-400` | Vibrant purple |
+| Articles | gray | `bg-slate-400` | Cool gray |
+| Nouns | blue | `bg-blue-500` | Strong blue |
+| Pronouns | red | `bg-red-500` | Bold red |
+| Verbs | green | `bg-emerald-500` | Rich emerald |
+| Adjectives | lightblue | `bg-cyan-400` | Bright cyan |
+| Tense markers | yellow | `bg-yellow-400` | Bright yellow |
+| Demonstratives | orange | `bg-orange-500` | Vivid orange |
+| Intensifiers | pink | `bg-pink-400` | Bright pink |
+| Locatives | brown | `bg-amber-700` | Deep amber |
+| Time words | indigo | `bg-indigo-400` | Distinct indigo |
+
+- **56 words** across 11 word types
+- **Cards in slots** display as full Card components (not white placeholders)
+- **Audit script:** `scripts/audit-card-colors.ts` validates color assignments
 
 ### Multiplayer Sentence Builder
 - Real-time slot-based sentence construction
