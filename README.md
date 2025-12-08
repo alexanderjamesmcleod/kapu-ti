@@ -182,7 +182,7 @@ Share both URLs with friends. They'll need to enter the WebSocket URL in "Server
 - [x] Browse games / spectator mode
 - [x] Chill mode (disables timers)
 - [x] Card stacking (any player can modify sentence)
-- [ ] Visual indicator for disconnected players
+- [x] Visual indicator for disconnected players
 - [ ] Tournament/ranked play
 - [ ] Mobile PWA
 - [ ] Production deployment

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { MultiplayerGame, Player, TableSlot } from '@/types/multiplayer.types';
 import type { Card as CardType } from '@/types';
 import { Card } from '@/components';
+import { ConnectionStatusBadge } from '@/components/ConnectionStatusBadge';
 import { playSentence } from '@/lib/audio';
 
 interface OnlineGameProps {
@@ -256,22 +257,43 @@ export function OnlineGame({
         <div className="flex justify-center gap-4 mb-6">
           {game.players
             .filter(p => p.id !== playerId)
-            .map(player => (
-              <div
-                key={player.id}
-                className={`text-center p-3 rounded-xl shadow-md ${
-                  player.isActive ? 'bg-white' : 'bg-gray-200 opacity-50'
-                } ${player.id === activePlayer.id ? 'ring-2 ring-teal-500' : ''}`}
-              >
-                <div className="text-2xl mb-1">
-                  {player.isActive ? '👤' : 'Winner!'}
+            .map(player => {
+              const isDisconnected = player.connectionStatus === 'disconnected';
+              const isAway = player.connectionStatus === 'away';
+              
+              return (
+                <div
+                  key={player.id}
+                  className={`text-center p-3 rounded-xl shadow-md transition-all ${
+                    player.isActive ? 'bg-white' : 'bg-gray-200 opacity-50'
+                  } ${player.id === activePlayer.id ? 'ring-2 ring-teal-500' : ''}
+                  ${isDisconnected ? 'opacity-60 grayscale' : ''}`}
+                >
+                  <div className="text-2xl mb-1 relative">
+                    {player.isActive ? (
+                      <>
+                        {isDisconnected ? '📴' : isAway ? '💤' : '👤'}
+                      </>
+                    ) : (
+                      '🏆'
+                    )}
+                  </div>
+                  <div className="font-semibold text-sm flex items-center justify-center gap-1">
+                    {player.name}
+                    <ConnectionStatusBadge status={player.connectionStatus} />
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {!player.isActive ? (
+                      'Finished!'
+                    ) : isDisconnected ? (
+                      <span className="text-red-500">Reconnecting...</span>
+                    ) : (
+                      `${player.hand.length} cards`
+                    )}
+                  </div>
                 </div>
-                <div className="font-semibold text-sm">{player.name}</div>
-                <div className="text-xs text-gray-500">
-                  {player.isActive ? `${player.hand.length} cards` : 'Finished!'}
-                </div>
-              </div>
-            ))}
+              );
+            })}
         </div>
 
         {/* Table - Sentence slots */}

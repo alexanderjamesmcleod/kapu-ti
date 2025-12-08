@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { ConnectionState } from '@/hooks/useOnlineGame';
+import { ConnectionStatusBadge } from '@/components/ConnectionStatusBadge';
 
 interface RoomPlayer {
   id: string;
@@ -246,25 +247,35 @@ export function OnlineLobby({
               Players at Table ({players.length}/10)
             </h2>
             <div className="space-y-2">
-              {players.map((player) => (
-                <div
-                  key={player.id}
-                  className={`flex items-center justify-between p-3 rounded-lg ${
-                    player.id === playerId ? 'bg-teal-50 border border-teal-200' : 'bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">👤</span>
-                    <span className="font-medium">
-                      {player.name || 'Player'}
-                      {player.id === playerId && ' (You)'}
+              {players.map((player) => {
+                // In lobby, isReady=false after disconnect means player is reconnecting
+                const isDisconnected = !player.isReady && player.id !== playerId;
+                
+                return (
+                  <div
+                    key={player.id}
+                    className={`flex items-center justify-between p-3 rounded-lg transition-all ${
+                      player.id === playerId ? 'bg-teal-50 border border-teal-200' : 'bg-gray-50'
+                    } ${isDisconnected ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{isDisconnected ? '📴' : '👤'}</span>
+                      <span className="font-medium">
+                        {player.name || 'Player'}
+                        {player.id === playerId && ' (You)'}
+                      </span>
+                      <ConnectionStatusBadge status={isDisconnected ? 'disconnected' : 'connected'} />
+                    </div>
+                    <span className={`text-sm px-2 py-1 rounded ${
+                      isDisconnected
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-green-100 text-green-700'
+                    }`}>
+                      {isDisconnected ? 'Reconnecting...' : 'Ready'}
                     </span>
                   </div>
-                  <span className="text-sm px-2 py-1 rounded bg-green-100 text-green-700">
-                    Ready
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

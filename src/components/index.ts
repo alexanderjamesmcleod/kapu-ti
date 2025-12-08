@@ -7,6 +7,7 @@ export { NumberCard } from './NumberCard';
 export { GameTable } from './GameTable';
 export { ChatPanel } from './ChatPanel';
 export { VoiceControls } from './VoiceControls';
+export { ConnectionStatusBadge } from './ConnectionStatusBadge';
 export { default as KoreroButton } from './KoreroButton';
 export { default as VotingOverlay } from './VotingOverlay';
 export { default as VoteResultModal } from './VoteResultModal';
