@@ -49,7 +49,6 @@ interface MobileGameViewProps {
   onSelectCard: (card: CardType | null) => void;
   onPlayCard: (slotId: string) => void;
   onStackCard: (slotId: string) => void;
-  onCreateSlot: () => void;
   onPassTurn: () => void;
   onUndoLastCard: () => void;
   onSubmitTurn: (sentence: string, translation: string) => void;
@@ -84,7 +83,6 @@ export function MobileGameView({
   onSelectCard,
   onPlayCard,
   onStackCard,
-  onCreateSlot,
   onPassTurn,
   onUndoLastCard,
   onSubmitTurn,
@@ -241,13 +239,7 @@ export function MobileGameView({
                   onSelectCard(null);
                 }
               }}
-              onCreateSlot={() => {
-                if (selectedCard) {
-                  onCreateSlot();
-                  sounds.playCardSound();
-                  onSelectCard(null);
-                }
-              }}
+              currentPattern={game.currentPattern}
             />
           </div>
 
@@ -403,13 +395,7 @@ export function MobileGameView({
                 onSelectCard(null);
               }
             }}
-            onCreateSlot={() => {
-              if (selectedCard) {
-                onCreateSlot();
-                sounds.playCardSound();
-                onSelectCard(null);
-              }
-            }}
+            currentPattern={game.currentPattern}
           />
         </div>
       </div>

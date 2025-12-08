@@ -250,8 +250,8 @@ export function GameTable({
                 </div>
               )}
 
-              {/* Sentence builder area - constrained to prevent overflow */}
-              <div className="bg-black/20 rounded-2xl p-3 backdrop-blur-sm max-w-[90%] max-h-[70%] overflow-auto flex-shrink">
+              {/* Sentence builder area - fixed layout for max 7 cards */}
+              <div className="bg-black/20 rounded-2xl p-3 backdrop-blur-sm w-full max-w-[95%]">
                 {centerContent || (
                   <p className="text-white/60 text-center text-sm">
                     Waiting for game to start...

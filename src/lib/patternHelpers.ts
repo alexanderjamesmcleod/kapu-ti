@@ -14,7 +14,7 @@ import {
 } from '../types/sentencePattern.types';
 import { Card } from '../types/validation.types';
 import { Word } from '../data/wordLibrary';
-import { SENTENCE_PATTERNS } from '../data/sentencePatterns';
+import { SLOT_PATTERNS } from '../data/sentencePatterns';
 
 // Type alias for vocabulary compatibility
 export type VocabularyWord = Word;
@@ -25,7 +25,7 @@ export type VocabularyWord = Word;
  * @returns Array of patterns that include this topic
  */
 export function getPatternsForTopic(topicId: string): SentencePattern[] {
-  return SENTENCE_PATTERNS.filter(pattern =>
+  return SLOT_PATTERNS.filter(pattern =>
     pattern.topicIds.includes(topicId)
   );
 }
@@ -175,7 +175,7 @@ export function validatePatternCompletion(
 export function getPatternsByDifficulty(
   difficulty: 'beginner' | 'intermediate' | 'advanced'
 ): SentencePattern[] {
-  return SENTENCE_PATTERNS.filter(p => p.difficulty === difficulty);
+  return SLOT_PATTERNS.filter(p => p.difficulty === difficulty);
 }
 
 /**
@@ -184,7 +184,7 @@ export function getPatternsByDifficulty(
  * @returns The pattern, or undefined if not found
  */
 export function getPatternById(patternId: string): SentencePattern | undefined {
-  return SENTENCE_PATTERNS.find(p => p.id === patternId);
+  return SLOT_PATTERNS.find(p => p.id === patternId);
 }
 
 /**

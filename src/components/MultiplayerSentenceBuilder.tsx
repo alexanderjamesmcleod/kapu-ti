@@ -2,7 +2,8 @@
 
 import type { TableSlot, TurnState } from '@/types/multiplayer.types';
 import type { Card as CardType } from '@/types';
-import { getTopCard, canPlayCardOnSlot, canCreateSlot } from '@/types/multiplayer.types';
+import type { PatternInstance } from '@/types/sentencePattern.types';
+import { getTopCard, canPlayCardOnSlot } from '@/types/multiplayer.types';
 import { Card } from './Card';
 
 interface MultiplayerSentenceBuilderProps {
@@ -11,9 +12,10 @@ interface MultiplayerSentenceBuilderProps {
   selectedCard: CardType | null;
   isMyTurn: boolean;
   currentPlayerName: string;
+  currentPattern?: PatternInstance;  // Current sentence pattern with hints
+  showPatternHint?: boolean;          // Whether to show the pattern template
   onPlayCard: (slotId: string) => void;
   onStackCard: (slotId: string) => void;  // Stack same-color card on occupied slot (any player)
-  onCreateSlot: () => void;
 }
 
 // Slot color classes for empty slots - matches Card component bold colors
@@ -52,9 +54,10 @@ export function MultiplayerSentenceBuilder({
   selectedCard,
   isMyTurn,
   currentPlayerName,
+  currentPattern,
+  showPatternHint = false,
   onPlayCard,
   onStackCard,
-  onCreateSlot,
 }: MultiplayerSentenceBuilderProps) {
   // Sort slots by position
   const sortedSlots = [...tableSlots].sort((a, b) => a.position - b.position);
@@ -64,6 +67,13 @@ export function MultiplayerSentenceBuilder({
     .map(slot => getTopCard(slot)?.maori || '')
     .filter(Boolean)
     .join(' ');
+
+  // Get slot hint from pattern if available
+  const getSlotHint = (position: number): string | undefined => {
+    if (!currentPattern) return undefined;
+    const patternSlot = currentPattern.slots[position];
+    return patternSlot?.hint;
+  };
 
   // Check if selected card can be played (current player's turn only)
   const canPlayOnSlot = (slot: TableSlot): boolean => {
@@ -81,10 +91,16 @@ export function MultiplayerSentenceBuilder({
     return selectedCard.color === slot.color;
   };
 
-  const canAddNewSlot = selectedCard && isMyTurn && canCreateSlot(selectedCard, turnState);
-
   return (
     <div className="flex flex-col items-center gap-4 w-full">
+      {/* Pattern hint display */}
+      {showPatternHint && currentPattern && (
+        <div className="px-4 py-2 bg-amber-100/90 rounded-lg shadow-md">
+          <p className="text-sm text-amber-800 font-medium">{currentPattern.pattern.name}</p>
+          <p className="text-xs text-amber-600">{currentPattern.pattern.maoriTemplate}</p>
+        </div>
+      )}
+
       {/* Current sentence display */}
       {currentSentence && (
         <div className="px-4 py-2 bg-white/90 rounded-lg shadow-md">
@@ -92,8 +108,8 @@ export function MultiplayerSentenceBuilder({
         </div>
       )}
 
-      {/* Slots */}
-      <div className="flex flex-wrap justify-center gap-2">
+      {/* Slots - max 7 cards, sized to fit */}
+      <div className="flex flex-wrap justify-center gap-1.5">
         {sortedSlots.map((slot) => {
           const topCard = getTopCard(slot);
           const colors = slotColors[slot.color] || slotColors.gray;
@@ -121,7 +137,7 @@ export function MultiplayerSentenceBuilder({
               `}
             >
               {topCard ? (
-                // Show the actual Card component - always fully visible
+                // Show the actual Card component - sm size for 7-card max layout
                 <div className="relative">
                   <Card
                     card={topCard}
@@ -149,22 +165,28 @@ export function MultiplayerSentenceBuilder({
                   )}
                 </div>
               ) : (
-                // Empty slot
+                // Empty slot - matches sm card size (w-20 h-28) for consistent layout
                 <div className={`
-                  w-20 h-28 rounded-lg border-2 border-dashed
+                  w-20 h-28 rounded-xl border-2 border-dashed
                   ${colors.bg} ${colors.border}
-                  flex flex-col items-center justify-center
+                  flex flex-col items-center justify-center gap-1
                   transition-all duration-200
                   ${canPlay ? 'ring-2 ring-amber-400 scale-105 shadow-lg' : ''}
                 `}>
-                  <div className={`w-8 h-8 rounded-full ${colors.indicator}`} />
+                  <div className={`w-6 h-6 rounded-full ${colors.indicator}`} />
                   <span className={`text-xs font-medium ${colors.text}`}>
                     {typeLabels[slot.color] || slot.color}
                   </span>
+                  {/* Pattern hint if available */}
+                  {getSlotHint(slot.position) && (
+                    <span className={`text-[10px] ${colors.text} opacity-70 text-center px-1 leading-tight`}>
+                      {getSlotHint(slot.position)}
+                    </span>
+                  )}
                   {/* Play here indicator */}
                   {canPlay && (
                     <div className="absolute inset-0 flex items-center justify-center
-                                  bg-amber-400/20 rounded-lg animate-pulse">
+                                  bg-amber-400/20 rounded-xl animate-pulse">
                       <span className="text-2xl">+</span>
                     </div>
                   )}
@@ -174,19 +196,7 @@ export function MultiplayerSentenceBuilder({
           );
         })}
 
-        {/* Add new slot button */}
-        {canAddNewSlot && (
-          <div
-            onClick={onCreateSlot}
-            className="w-20 h-28 rounded-lg border-2 border-dashed border-white/50
-                     bg-white/10 flex flex-col items-center justify-center
-                     cursor-pointer hover:bg-white/20 transition-all
-                     ring-2 ring-amber-400 animate-pulse"
-          >
-            <span className="text-3xl text-white">+</span>
-            <span className="text-xs text-white/70">New slot</span>
-          </div>
-        )}
+        {/* Slots are fixed - no "add new slot" button in pattern-based mode */}
       </div>
 
       {/* Turn indicator */}

@@ -7,7 +7,9 @@
 
 import { SentencePattern, TYPE_TO_COLOR } from '../types/sentencePattern.types';
 
-export const SENTENCE_PATTERNS: SentencePattern[] = [
+// SLOT_PATTERNS: Pre-generated sentence patterns with colored slots for Kapu Tī v2
+// (Named differently from legacy SENTENCE_PATTERNS in topics.ts)
+export const SLOT_PATTERNS: SentencePattern[] = [
   // 1. Ko wai? (Who is...?)
   // Pattern: Ko [noun] [pronoun/noun]
   // Example: "Ko Maia au" (I am Maia)
@@ -248,11 +250,12 @@ export const SENTENCE_PATTERNS: SentencePattern[] = [
 ];
 
 // Helper to get all pattern IDs
-export const PATTERN_IDS = SENTENCE_PATTERNS.map(p => p.id);
+export const PATTERN_IDS = SLOT_PATTERNS.map(p => p.id);
 
 // Index by difficulty
 export const PATTERNS_BY_DIFFICULTY = {
-  beginner: SENTENCE_PATTERNS.filter(p => p.difficulty === 'beginner'),
-  intermediate: SENTENCE_PATTERNS.filter(p => p.difficulty === 'intermediate'),
-  advanced: SENTENCE_PATTERNS.filter(p => p.difficulty === 'advanced'),
+  beginner: SLOT_PATTERNS.filter(p => p.difficulty === 'beginner'),
+  intermediate: SLOT_PATTERNS.filter(p => p.difficulty === 'intermediate'),
+  advanced: SLOT_PATTERNS.filter(p => p.difficulty === 'advanced'),
 };
+

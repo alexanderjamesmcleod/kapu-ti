@@ -39,10 +39,12 @@ export interface Word {
 
 // Create audio URL lookup map from vocabulary.json
 const audioMap = new Map<string, string>();
-vocabularyData.words.forEach((w: { word: string; audioUrl: string }) => {
+vocabularyData.words.forEach((w: { word: string; audioUrl: string | null }) => {
   // Normalize the word (lowercase, remove special chars from key)
   const normalizedWord = w.word.toLowerCase().replace(/\s*\(.*?\)\s*/g, '').trim();
-  audioMap.set(normalizedWord, w.audioUrl);
+  if (w.audioUrl) {
+    audioMap.set(normalizedWord, w.audioUrl);
+  }
 });
 
 /**

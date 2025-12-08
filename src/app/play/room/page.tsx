@@ -849,11 +849,6 @@ export default function RoomPage() {
                         online.stackCard(selectedCard.id, slotId);
                       }
                     }}
-                    onCreateSlot={() => {
-                      if (selectedCard) {
-                        online.createSlot(selectedCard.id);
-                      }
-                    }}
                     onPassTurn={() => online.passTurn()}
                     onUndoLastCard={() => online.undoLastCard()}
                     onSubmitTurn={(sentence, translation) => online.submitTurn(sentence, translation)}
@@ -930,13 +925,7 @@ export default function RoomPage() {
                       setSelectedCard(null);
                     }
                   }}
-                  onCreateSlot={() => {
-                    if (selectedCard) {
-                      online.createSlot(selectedCard.id);
-                      sounds.playCardSound();
-                      setSelectedCard(null);
-                    }
-                  }}
+                  currentPattern={online.game.currentPattern}
                 />
               }
               currentTopic={online.game.currentTopic}

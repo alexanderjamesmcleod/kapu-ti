@@ -3,6 +3,7 @@
  */
 
 import type { Card } from './index';
+import type { PatternInstance } from './sentencePattern.types';
 
 // Player connection status
 export type PlayerConnectionStatus = 'connected' | 'disconnected' | 'away';
@@ -91,6 +92,8 @@ export interface MultiplayerGame {
   turnOrderWinner?: number;         // Player index who had highest card
   // Topic selection
   currentTopic?: GameTopic;         // The topic for this round
+  // Pattern for sentence building
+  currentPattern?: PatternInstance; // Pre-generated pattern with target words
 }
 
 // Actions that can be taken
