@@ -193,6 +193,29 @@ Colors are critical for pattern recognition - players learn word types by color 
 - Undo support for last played card
 - Pass turn and Kōrero (submit) actions
 
+### Mobile-First PWA (NEW!)
+- **Portrait mode optimized:** 6+ cards visible on 412px screens
+- **Compact card sizing:** Extra-small cards (48×64px) for mobile
+- **Scroll-snap navigation:** Horizontal card scrolling with snap points
+- **Safe area support:** Handles notched devices (iPhone, etc.)
+- **Dynamic viewport:** Uses `100dvh` for proper mobile height
+
+### Mobile Action Buttons (NEW!)
+Layout: `[🎙️ Voice] [Undo?] [PASS] [Kōrero?] [💬 Chat]`
+
+- **Pass button is always centered** and prominent
+- **Your turn visual cues:**
+  - Pass button expands (larger padding, rounded-xl)
+  - Pulsing animation (animate-pulse)
+  - Amber glow ring (ring-2 ring-amber-300)
+  - Shadow effect (shadow-lg)
+- **Not your turn:** Pass button shrinks, greyed out, disabled
+- **Kōrero = Voice Chat:** Single button for both voice toggle AND turn submission
+  - When no cards played: toggles voice chat (join/mute/unmute)
+  - When cards played: opens Kōrero submit modal
+- **Chat button:** Opens slide-up chat panel on mobile
+- **Desktop:** Keeps floating voice/chat controls (unchanged)
+
 ### Kōrero Button & Voting System (NEW!)
 - **Kōrero Button:** Opens modal for player to submit their turn
   - Shows current sentence in Māori

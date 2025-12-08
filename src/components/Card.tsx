@@ -73,7 +73,7 @@ const colorClasses: Record<string, { bg: string; border: string; text: string }>
 };
 
 const sizeClasses = {
-  xs: 'w-14 h-20 text-[0.5rem]',  // Extra small for mobile portrait
+  xs: 'w-12 h-16 text-[0.45rem] p-1 border',  // Extra small for mobile portrait - tighter
   sm: 'w-20 h-28 text-xs',
   md: 'w-28 h-36 text-sm',
   lg: 'w-36 h-48 text-base',
@@ -112,9 +112,9 @@ export function Card({
         ${sizeClasses[size]}
         ${colors.bg}
         ${colors.border}
-        ${selected ? 'ring-2 ring-offset-2 ring-gray-800 -translate-y-2 shadow-xl' : 'shadow-md'}
+        ${selected ? (size === 'xs' ? 'ring-1 ring-gray-800 -translate-y-1 shadow-lg' : 'ring-2 ring-offset-2 ring-gray-800 -translate-y-2 shadow-xl') : 'shadow-md'}
         ${disabled ? 'opacity-50 cursor-not-allowed' : onClick ? 'cursor-pointer hover:-translate-y-1 hover:shadow-lg' : ''}
-        rounded-xl border-2 p-2
+        ${size === 'xs' ? 'rounded-lg' : 'rounded-xl border-2 p-2'}
         flex flex-col justify-between items-center
         transition-all duration-200 ease-out
         select-none relative
@@ -149,25 +149,29 @@ export function Card({
       )}
 
       {/* Main word */}
-      <div className={`font-bold ${colors.text} text-center leading-tight ${size === 'xs' ? 'mt-1' : 'mt-4'}`}>
+      <div className={`font-bold ${colors.text} text-center leading-tight ${size === 'xs' ? 'mt-0.5' : 'mt-4'}`}>
         {showEnglish ? card.english : card.maori}
       </div>
 
-      {/* Translation */}
-      <div className={`${colors.text} opacity-80 text-center italic text-[0.65rem] leading-tight px-1`}>
-        {showEnglish ? card.maori : card.english}
-      </div>
+      {/* Translation - hide on xs for space */}
+      {size !== 'xs' && (
+        <div className={`${colors.text} opacity-80 text-center italic text-[0.65rem] leading-tight px-1`}>
+          {showEnglish ? card.maori : card.english}
+        </div>
+      )}
 
-      {/* Word type badge */}
-      <div
-        className={`
-          text-[0.5rem] uppercase tracking-wider font-semibold
-          px-2 py-0.5 rounded-full
-          bg-white/30 ${colors.text}
-        `}
-      >
-        {card.type.replace('_', ' ')}
-      </div>
+      {/* Word type badge - hide on xs for space */}
+      {size !== 'xs' && (
+        <div
+          className={`
+            text-[0.5rem] uppercase tracking-wider font-semibold
+            px-2 py-0.5 rounded-full
+            bg-white/30 ${colors.text}
+          `}
+        >
+          {card.type.replace('_', ' ')}
+        </div>
+      )}
     </div>
   );
 }

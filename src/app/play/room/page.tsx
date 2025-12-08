@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, VoteResultModal, SoundToggle, MobileGameView } from '@/components';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, SoundToggle, MobileGameView } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
 import VoiceControls from '@/components/VoiceControls';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -85,9 +85,25 @@ export default function RoomPage() {
   const [joinCode, setJoinCode] = useState('');
   const [playerName, setPlayerName] = useState(generatePlayerName());
   const [playerAvatar, setPlayerAvatar] = useState(AVATARS[0]);
-  const [serverUrl, setServerUrl] = useState('ws://localhost:3002');
+  // Read ?ws= query parameter on mount - compute initial value
+  const initialWsUrl = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get('ws') || sessionStorage.getItem('kaputi_ws_url');
+  }, []);
+  
+  const [serverUrl, setServerUrl] = useState(() => {
+    if (typeof window === 'undefined') return 'ws://localhost:3002';
+    const params = new URLSearchParams(window.location.search);
+    const wsParam = params.get('ws');
+    if (wsParam) {
+      sessionStorage.setItem('kaputi_ws_url', wsParam);
+      return wsParam;
+    }
+    return sessionStorage.getItem('kaputi_ws_url') || 'ws://localhost:3002';
+  });
   const [showServerConfig, setShowServerConfig] = useState(false);
-  const [wsFromUrl, setWsFromUrl] = useState<string | null>(null);
+  const wsFromUrl = initialWsUrl;
   const [players, setPlayers] = useState<Player[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [isReady, setIsReady] = useState(true); // Auto-ready
@@ -140,26 +156,6 @@ export default function RoomPage() {
       voice.leaveVoice();
     }
   }, [phase, voice.isVoiceEnabled, voice.leaveVoice]);
-
-  // Read ?ws= query parameter on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const wsParam = params.get('ws');
-      if (wsParam) {
-        setWsFromUrl(wsParam);
-        setServerUrl(wsParam);
-        // Store in sessionStorage so it persists
-        sessionStorage.setItem('kaputi_ws_url', wsParam);
-      } else {
-        // Check sessionStorage for previously set URL
-        const savedUrl = sessionStorage.getItem('kaputi_ws_url');
-        if (savedUrl) {
-          setServerUrl(savedUrl);
-        }
-      }
-    }
-  }, []);
 
   // Connect to WebSocket on initial mount only
   const hasAutoConnected = useRef(false);
@@ -765,7 +761,7 @@ export default function RoomPage() {
             {online.game.phase === 'topicSelect' && (
               <div className="flex-1 flex flex-col items-center justify-center gap-6 p-4">
                 <h2 className="text-2xl font-bold text-white">He aha te kaupapa?</h2>
-                <p className="text-teal-300 text-sm">What's the topic for this round?</p>
+                <p className="text-teal-300 text-sm">What&apos;s the topic for this round?</p>
 
                 {/* Who is selecting */}
                 {online.game.turnOrderWinner !== undefined && (
@@ -865,6 +861,17 @@ export default function RoomPage() {
                     turnTimeRemaining={online.turnTimeRemaining}
                     chillMode={online.chillMode}
                     sounds={sounds}
+                    voice={{
+                      isVoiceEnabled: voice.isVoiceEnabled,
+                      isMuted: voice.isMuted,
+                      onJoinVoice: voice.joinVoice,
+                      onLeaveVoice: voice.leaveVoice,
+                      onToggleMute: voice.toggleMute,
+                    }}
+                    chat={{
+                      unreadCount: 0, // Simplified - chat open state handles this
+                      onToggleChat: () => setIsChatOpen(!isChatOpen),
+                    }}
                   />
                 ) : (
                   /* DESKTOP VIEW */
@@ -1016,28 +1023,49 @@ export default function RoomPage() {
               />
             )}
 
-            {/* Floating Voice + Chat Controls - visible in all game phases */}
-            <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
-              {/* Voice Controls */}
-              <VoiceControls
-                isVoiceEnabled={voice.isVoiceEnabled}
-                isMuted={voice.isMuted}
-                participants={voice.participants}
-                onJoinVoice={voice.joinVoice}
-                onLeaveVoice={voice.leaveVoice}
-                onToggleMute={voice.toggleMute}
-              />
+            {/* Floating Voice + Chat Controls - DESKTOP only (mobile uses integrated buttons) */}
+            {!isMobile && (
+              <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
+                {/* Voice Controls */}
+                <VoiceControls
+                  isVoiceEnabled={voice.isVoiceEnabled}
+                  isMuted={voice.isMuted}
+                  participants={voice.participants}
+                  onJoinVoice={voice.joinVoice}
+                  onLeaveVoice={voice.leaveVoice}
+                  onToggleMute={voice.toggleMute}
+                />
 
-              {/* Chat Panel */}
-              <ChatPanel
-                messages={online.chatMessages}
-                currentPlayerId={online.playerId}
-                onSendMessage={online.sendChat}
-                onSendReaction={online.sendReaction}
-                isCollapsed={!isChatOpen}
-                onToggleCollapse={() => setIsChatOpen(!isChatOpen)}
-              />
-            </div>
+                {/* Chat Panel */}
+                <ChatPanel
+                  messages={online.chatMessages}
+                  currentPlayerId={online.playerId}
+                  onSendMessage={online.sendChat}
+                  onSendReaction={online.sendReaction}
+                  isCollapsed={!isChatOpen}
+                  onToggleCollapse={() => setIsChatOpen(!isChatOpen)}
+                />
+              </div>
+            )}
+
+            {/* Mobile Chat Panel - slides up when toggled */}
+            {isMobile && isChatOpen && (
+              <div className="fixed inset-0 z-50 bg-black/50" onClick={() => setIsChatOpen(false)}>
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-gray-800 rounded-t-xl max-h-[60vh] overflow-hidden"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <ChatPanel
+                    messages={online.chatMessages}
+                    currentPlayerId={online.playerId}
+                    onSendMessage={online.sendChat}
+                    onSendReaction={online.sendReaction}
+                    isCollapsed={false}
+                    onToggleCollapse={() => setIsChatOpen(false)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

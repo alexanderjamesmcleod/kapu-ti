@@ -60,6 +60,19 @@ interface MobileGameViewProps {
     playCardSound: () => void;
     playCardPickupSound: () => void;
   };
+  // Voice controls
+  voice?: {
+    isVoiceEnabled: boolean;
+    isMuted: boolean;
+    onJoinVoice: () => void;
+    onLeaveVoice: () => void;
+    onToggleMute: () => void;
+  };
+  // Chat controls
+  chat?: {
+    unreadCount: number;
+    onToggleChat: () => void;
+  };
 }
 
 export function MobileGameView({
@@ -79,6 +92,8 @@ export function MobileGameView({
   turnTimeRemaining,
   chillMode,
   sounds,
+  voice,
+  chat,
 }: MobileGameViewProps) {
   const [showAllPlayers, setShowAllPlayers] = useState(false);
   const isLandscape = useIsLandscape();
@@ -299,19 +314,18 @@ export function MobileGameView({
   // Portrait layout
   return (
     <div className="flex flex-col h-full">
-      {/* Top Bar: Turn indicator + Timer + Topic */}
-      <div className="flex-shrink-0 px-3 py-2 bg-gray-800/80 backdrop-blur-sm">
+      {/* Top Bar: Turn indicator + Timer */}
+      <div className="flex-shrink-0 px-3 py-1 bg-gray-800/80 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           {/* Current turn indicator */}
           <div className="flex items-center gap-2">
             {currentTurnPlayer && (
               <>
-                <span className="text-2xl">{currentTurnPlayer.avatar}</span>
+                <span className="text-xl">{currentTurnPlayer.avatar}</span>
                 <div>
                   <p className={`text-sm font-bold ${isMyTurn ? 'text-amber-400' : 'text-white'}`}>
                     {isMyTurn ? 'Your turn!' : `${currentTurnPlayer.name}'s turn`}
                   </p>
-                  <p className="text-xs text-gray-400">{game.phase}</p>
                 </div>
               </>
             )}
@@ -327,39 +341,47 @@ export function MobileGameView({
               {turnTimeRemaining}s
             </span>
           )}
-
-          {/* Topic indicator */}
-          {currentTopic && (
-            <div className="flex items-center gap-1 bg-teal-600/50 px-2 py-1 rounded-lg">
-              <span className="text-lg">{currentTopic.icon}</span>
-              <span className="text-xs text-teal-100">{currentTopic.maori}</span>
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* Middle Section: Players on sides + Sentence Builder in center */}
-      <div className="flex-1 flex items-stretch min-h-0 px-2 py-2 gap-2">
-        {/* Left Player Chip */}
-        {leftPlayer && (
-          <div className="flex flex-col items-center justify-center w-12">
-            <div className={`
-              w-10 h-10 rounded-full flex items-center justify-center text-xl
-              ${leftPlayer.isCurrentTurn ? 'ring-2 ring-amber-400 bg-amber-500/30' : 'bg-gray-700'}
-              ${!leftPlayer.isActive ? 'opacity-50' : ''}
-            `}>
-              {leftPlayer.avatar}
-            </div>
-            <span className="text-[10px] text-gray-400 mt-1 truncate w-full text-center">
-              {leftPlayer.name}
-            </span>
-            <span className="text-[10px] text-gray-500">
-              {leftPlayer.cardsInHand} cards
-            </span>
+        {/* Topic indicator - centered, full width */}
+        {currentTopic && (
+          <div className="flex items-center justify-center gap-2 mt-1 py-1 bg-teal-600/30 rounded-lg">
+            <span className="text-xl">{currentTopic.icon}</span>
+            <span className="text-sm text-teal-100 font-medium">{currentTopic.maori}</span>
+            <span className="text-xs text-teal-200/70">({currentTopic.name})</span>
           </div>
         )}
+      </div>
 
-        {/* Center: Sentence Builder */}
+      {/* Other Players Bar - compact horizontal display */}
+      {otherPlayers.length > 0 && (
+        <div className="flex-shrink-0 px-2 py-1 flex items-center gap-2 overflow-x-auto">
+          {otherPlayers.slice(0, 4).map((player) => (
+            <div
+              key={player.id}
+              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs
+                ${player.isCurrentTurn ? 'bg-amber-500/30 ring-1 ring-amber-400' : 'bg-gray-700/50'}
+                ${!player.isActive ? 'opacity-50' : ''}
+              `}
+            >
+              <span className="text-sm">{player.avatar}</span>
+              <span className="text-gray-300 truncate max-w-[60px]">{player.name}</span>
+              <span className="text-gray-500">{player.cardsInHand}</span>
+            </div>
+          ))}
+          {otherPlayers.length > 4 && (
+            <button
+              onClick={() => setShowAllPlayers(true)}
+              className="px-2 py-1 bg-gray-700/50 rounded-full text-xs text-gray-400"
+            >
+              +{otherPlayers.length - 4}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Middle Section: Sentence Builder - FULL WIDTH now */}
+      <div className="flex-1 flex items-stretch min-h-0 px-2 py-1">
         <div className="flex-1 flex flex-col items-center justify-center bg-gray-800/50 rounded-xl p-2 min-h-0 overflow-hidden">
           <MultiplayerSentenceBuilder
             tableSlots={game.tableSlots}
@@ -390,69 +412,88 @@ export function MobileGameView({
             }}
           />
         </div>
-
-        {/* Right Player Chip */}
-        {rightPlayer && (
-          <div className="flex flex-col items-center justify-center w-12">
-            <div className={`
-              w-10 h-10 rounded-full flex items-center justify-center text-xl
-              ${rightPlayer.isCurrentTurn ? 'ring-2 ring-amber-400 bg-amber-500/30' : 'bg-gray-700'}
-              ${!rightPlayer.isActive ? 'opacity-50' : ''}
-            `}>
-              {rightPlayer.avatar}
-            </div>
-            <span className="text-[10px] text-gray-400 mt-1 truncate w-full text-center">
-              {rightPlayer.name}
-            </span>
-            <span className="text-[10px] text-gray-500">
-              {rightPlayer.cardsInHand} cards
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* More Players Button (if > 2 opponents) */}
-      {remainingPlayers.length > 0 && (
-        <button
-          onClick={() => setShowAllPlayers(true)}
-          className="mx-3 mb-2 py-1 px-3 bg-gray-700/50 rounded-lg text-xs text-gray-400 flex items-center justify-center gap-1"
-        >
-          <span>+{remainingPlayers.length} more players</span>
-          <span className="text-gray-500">tap to view all</span>
-        </button>
-      )}
+      {/* Action Buttons Row */}
+      <div className="flex-shrink-0 px-3 pb-2">
+        <div className="flex gap-2 justify-center items-center">
+          {/* Kōrero/Voice button - left side */}
+          {voice && (
+            <button
+              onClick={voice.isVoiceEnabled ? voice.onToggleMute : voice.onJoinVoice}
+              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all ${
+                voice.isVoiceEnabled
+                  ? voice.isMuted
+                    ? 'bg-red-500 text-white'
+                    : 'bg-teal-500 text-white'
+                  : 'bg-gray-600 text-gray-300'
+              }`}
+              title={voice.isVoiceEnabled ? (voice.isMuted ? 'Unmute' : 'Mute') : 'Join Voice'}
+            >
+              {voice.isVoiceEnabled ? (voice.isMuted ? '🔇' : '🎤') : '🎙️'}
+            </button>
+          )}
 
-      {/* Action Buttons (when it's your turn) */}
-      {isMyTurn && (game.phase === 'playing' || game.phase === 'turnEnd') && (
-        <div className="flex-shrink-0 px-3 pb-2">
-          <div className="flex gap-2 justify-center">
-            {game.turnState.playedCards.length > 0 && (
-              <button
-                onClick={() => {
-                  onUndoLastCard();
-                  sounds.playCardPickupSound();
-                }}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm font-semibold"
-              >
-                Undo
-              </button>
-            )}
+          {/* Undo button - only when cards played */}
+          {isMyTurn && (game.phase === 'playing' || game.phase === 'turnEnd') && game.turnState.playedCards.length > 0 && (
+            <button
+              onClick={() => {
+                onUndoLastCard();
+                sounds.playCardPickupSound();
+              }}
+              className="px-3 py-2 bg-gray-600 text-white rounded-lg text-sm font-semibold"
+            >
+              Undo
+            </button>
+          )}
+
+          {/* CENTER: Pass button - prominent when it's your turn */}
+          {isMyTurn && (game.phase === 'playing' || game.phase === 'turnEnd') ? (
             <button
               onClick={onPassTurn}
-              className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold"
+              className="px-6 py-3 bg-amber-500 text-white rounded-xl text-base font-bold shadow-lg
+                         transform transition-all duration-300 animate-pulse
+                         hover:scale-105 hover:bg-amber-400
+                         ring-2 ring-amber-300 ring-opacity-50"
             >
               Pass
             </button>
-            {game.turnState.playedCards.length > 0 && (
-              <KoreroButton
-                disabled={false}
-                sentence={getSentenceFromSlots(game.tableSlots)}
-                onKorero={(translation) => onSubmitTurn(getSentenceFromSlots(game.tableSlots), translation)}
-              />
-            )}
-          </div>
+          ) : (
+            /* Placeholder pass button when not your turn - greyed out */
+            <button
+              disabled
+              className="px-4 py-2 bg-gray-700 text-gray-500 rounded-lg text-sm font-semibold opacity-50 cursor-not-allowed"
+            >
+              Pass
+            </button>
+          )}
+
+          {/* Kōrero submit button - only when cards played */}
+          {isMyTurn && (game.phase === 'playing' || game.phase === 'turnEnd') && game.turnState.playedCards.length > 0 && (
+            <KoreroButton
+              disabled={false}
+              sentence={getSentenceFromSlots(game.tableSlots)}
+              onKorero={(translation) => onSubmitTurn(getSentenceFromSlots(game.tableSlots), translation)}
+            />
+          )}
+
+          {/* Chat button - right side */}
+          {chat && (
+            <button
+              onClick={chat.onToggleChat}
+              className="w-10 h-10 rounded-full flex items-center justify-center text-lg bg-blue-500 text-white relative"
+              title="Chat"
+            >
+              💬
+              {chat.unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {chat.unreadCount > 9 ? '9+' : chat.unreadCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Bottom: Card Hand (sticky tray) - minimal padding */}
       <div className="flex-shrink-0 bg-white/95 rounded-t-xl shadow-lg px-1 py-2 safe-area-bottom">
