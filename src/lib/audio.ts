@@ -3,38 +3,13 @@
  * Pronunciation audio from kupu.maori.nz (with attribution)
  */
 
-// Audio URL patterns for kupu.maori.nz
-const KUPU_AUDIO_BASE = 'https://kupu.maori.nz/blobs/Audio';
-
-// Known audio mappings (word -> filename)
-// Some words use verb forms like kai(nga), mahi(a)
-const AUDIO_MAPPINGS: Record<string, string> = {
-  // Verbs with passive suffix
-  'kai': 'kai(nga)',
-  'mahi': 'mahi(a)',
-  'ako': 'ako(na)',
-  'noho': 'noho(ia)',
-
-  // Nouns with alternate forms
-  'tangata': 'tangata-tāngata',
-
-  // Direct matches (most words)
-  'whare': 'whare',
-  'ngeru': 'ngeru',
-  'pai': 'pai',
-  'moe': 'moe',
-  'nui': 'nui',
-  'kura': 'kura',
-  'reo': 'reo',
-  'tae': 'tae',
-};
+import { getAudioUrl as getAudioUrlFromLibrary } from '@/data/wordLibrary';
 
 /**
- * Get the audio URL for a Māori word
+ * Get the audio URL for a Māori word from the vocabulary database
  */
 export function getAudioUrl(word: string): string | null {
-  const filename = AUDIO_MAPPINGS[word.toLowerCase()] || word.toLowerCase();
-  return `${KUPU_AUDIO_BASE}/${encodeURIComponent(filename)}.mp3`;
+  return getAudioUrlFromLibrary(word) || null;
 }
 
 /**

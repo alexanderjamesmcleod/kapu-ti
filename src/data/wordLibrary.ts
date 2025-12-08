@@ -2,9 +2,11 @@
  * Word Library for Te Reo Academy
  * Complete vocabulary for Modules 1 & 2
  * Ported from v3: te-reo-card-game/src/data/wordLibrary.js
- * 
+ *
  * All words include NZSL placeholders for Phase 4 integration
  */
+
+import vocabularyData from '../../data/vocabulary.json';
 
 export interface Word {
   id: string;
@@ -26,6 +28,24 @@ export interface Word {
   breakdown?: string;
   distance?: string;
   person?: string;
+}
+
+// Create audio URL lookup map from vocabulary.json
+const audioMap = new Map<string, string>();
+vocabularyData.words.forEach((w: { word: string; audioUrl: string }) => {
+  // Normalize the word (lowercase, remove special chars from key)
+  const normalizedWord = w.word.toLowerCase().replace(/\s*\(.*?\)\s*/g, '').trim();
+  audioMap.set(normalizedWord, w.audioUrl);
+});
+
+/**
+ * Get audio URL for a Māori word from vocabulary database
+ * @param maoriWord - The Māori word to look up
+ * @returns Audio URL if found, undefined otherwise
+ */
+export function getAudioUrl(maoriWord: string): string | undefined {
+  const normalized = maoriWord.toLowerCase().trim();
+  return audioMap.get(normalized);
 }
 
 // Module 1: Tūāpapa (Foundations) - Ko/He Sentences
