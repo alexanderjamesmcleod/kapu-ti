@@ -22,6 +22,9 @@ import { MAORI_NUMBERS, TOPICS } from '../src/data/topics';
 // Import word library for card generation
 import { ALL_WORDS } from '../src/data/wordLibrary';
 
+// Import scoring module
+import { calculateTurnScore } from './scoring';
+
 // Convert word to card
 function wordToCard(word: typeof ALL_WORDS[0]): Card {
   return {
@@ -370,10 +373,14 @@ function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
   const currentPlayerIdx = game.currentPlayerIndex;
   const player = game.players[currentPlayerIdx];
 
+  // Calculate score for this turn
+  const turnScore = calculateTurnScore(game.turnState.playedCards, game.currentTopic);
+  const updatedScore = player.score + turnScore;
+
   // Check if player emptied their hand
   if (player.hand.length === 0) {
     const newPlayers = [...game.players];
-    newPlayers[currentPlayerIdx] = { ...player, isActive: false };
+    newPlayers[currentPlayerIdx] = { ...player, score: updatedScore, isActive: false };
 
     const newWinners = [...game.winnersInOrder, player.id];
 
@@ -411,6 +418,7 @@ function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
   const newPlayers = [...game.players];
   newPlayers[currentPlayerIdx] = {
     ...player,
+    score: updatedScore,
     hand: remainingHand,
   };
 
