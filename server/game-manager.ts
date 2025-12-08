@@ -548,6 +548,7 @@ export class GameManager {
       id: roomPlayer.id,
       name: roomPlayer.name,
       hand: newHand,
+      score: 0,  // Initialize score to 0
       isActive: true,
       position: game.players.length, // Add at end
     };

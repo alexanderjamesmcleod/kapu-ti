@@ -12,6 +12,7 @@ export interface Player {
   id: string;
   name: string;
   hand: Card[];
+  score: number;        // Player's accumulated score
   isActive: boolean;    // false = left game (emptied hand)
   position: number;     // 0-3 for table position
   connectionStatus?: PlayerConnectionStatus;  // Online status

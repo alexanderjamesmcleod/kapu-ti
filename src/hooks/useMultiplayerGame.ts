@@ -64,6 +64,7 @@ function initializeGame(
     id: generateId(),
     name,
     hand: allCards.splice(0, settings.cardsPerPlayer),
+    score: 0,  // Initialize score to 0
     isActive: true,
     position: index,
   }));
