@@ -22,6 +22,7 @@ export interface Word {
   note?: string;
   plural?: string;
   theme?: string;
+  topics?: string[];
   breakdown?: string;
   distance?: string;
   person?: string;
@@ -111,6 +112,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'fah-reh',
       plural: 'whare',
       theme: 'places',
+      topics: ['places'],
       module: 1,
       culturalNote: 'Also means meeting house on marae',
       nzsl_video_url: null,
@@ -125,6 +127,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'nge-roo',
       plural: 'ngeru',
       theme: 'animals',
+      topics: ['animals'],
       module: 1,
       nzsl_video_url: null,
       nzsl_description: null
@@ -139,6 +142,7 @@ export const WORDS_MODULE_1 = {
       plural: 'kaiako',
       breakdown: 'kai (food/eat) + ako (learn)',
       theme: 'people',
+      topics: ['people'],
       module: 1,
       culturalNote: 'Literally "one who feeds learning"',
       nzsl_video_url: null,
@@ -153,6 +157,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'tah-nga-tah',
       plural: 'tangata',
       theme: 'people',
+      topics: ['people'],
       module: 1,
       nzsl_video_url: null,
       nzsl_description: null
@@ -166,6 +171,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'koo-ree',
       plural: 'kuri',
       theme: 'animals',
+      topics: ['animals'],
       module: 1,
       nzsl_video_url: null,
       nzsl_description: null
@@ -179,6 +185,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'tah-my-tee',
       plural: 'tamariki',
       theme: 'people',
+      topics: ['people'],
       module: 1,
       nzsl_video_url: null,
       nzsl_description: null
@@ -191,6 +198,7 @@ export const WORDS_MODULE_1 = {
       color: 'blue',
       pronunciation: 'tah-mah-ree-kee',
       theme: 'people',
+      topics: ['people'],
       module: 1,
       note: 'Plural of tamaiti',
       nzsl_video_url: null,
@@ -205,6 +213,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'kar-kar',
       plural: 'kākā',
       theme: 'animals',
+      topics: ['animals'],
       module: 1,
       culturalNote: 'Endemic forest parrot, important in Māori culture',
       nzsl_video_url: null,
@@ -219,6 +228,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'mah-noo',
       plural: 'manu',
       theme: 'animals',
+      topics: ['animals'],
       module: 1,
       nzsl_video_url: null,
       nzsl_description: null
@@ -232,6 +242,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'poh-ah-kaw',
       plural: 'pouako',
       theme: 'people',
+      topics: ['people'],
       module: 1,
       note: 'Alternative to kaiako',
       nzsl_video_url: null,
@@ -246,6 +257,7 @@ export const WORDS_MODULE_1 = {
       pronunciation: 'tah-oo-ee-rah',
       plural: 'tauira',
       theme: 'people',
+      topics: ['people'],
       module: 1,
       nzsl_video_url: null,
       nzsl_description: null
@@ -376,6 +388,7 @@ export const WORDS_MODULE_2 = {
         { maori: 'Kei te pai au', english: 'I am good' },
         { maori: 'He pai te kai', english: 'The food is good' }
       ],
+      topics: ['feelings'],
       module: 2,
       nzsl_video_url: null,
       nzsl_description: null
@@ -391,6 +404,7 @@ export const WORDS_MODULE_2 = {
       examples: [
         { maori: 'Kei te harikoa ia', english: 'He/she is happy' }
       ],
+      topics: ['feelings'],
       module: 2,
       nzsl_video_url: null,
       nzsl_description: null
@@ -406,6 +420,7 @@ export const WORDS_MODULE_2 = {
       examples: [
         { maori: 'Kei te māuiui koe?', english: 'Are you sick?' }
       ],
+      topics: ['feelings'],
       module: 2,
       nzsl_video_url: null,
       nzsl_description: null
@@ -533,6 +548,7 @@ export const WORDS_MODULE_2 = {
         { maori: 'Kei te haere au', english: 'I am going' },
         { maori: 'Kei te haere ia ki te kura', english: 'He/she is going to school' }
       ],
+      topics: ['actions'],
       culturalNote: 'Common in greetings: "Haere mai" (welcome/come here)',
       module: 2,
       nzsl_video_url: null,
@@ -550,6 +566,7 @@ export const WORDS_MODULE_2 = {
         { maori: 'Kei te kai au', english: 'I am eating' },
         { maori: 'Kei te kai mātou', english: 'We are eating' }
       ],
+      topics: ['kai', 'actions'],
       culturalNote: 'Kai is central to Māori culture - food and hospitality',
       module: 2,
       nzsl_video_url: null,
@@ -567,6 +584,7 @@ export const WORDS_MODULE_2 = {
         { maori: 'Kei te noho au', english: 'I am sitting/staying' },
         { maori: 'Kei te noho au i Tāmaki Makaurau', english: 'I am living in Auckland' }
       ],
+      topics: ['actions'],
       module: 2,
       nzsl_video_url: null,
       nzsl_description: null
@@ -582,6 +600,7 @@ export const WORDS_MODULE_2 = {
       examples: [
         { maori: 'Kei te oma ia', english: 'He/she is running' }
       ],
+      topics: ['actions'],
       module: 2,
       nzsl_video_url: null,
       nzsl_description: null
@@ -597,6 +616,7 @@ export const WORDS_MODULE_2 = {
       examples: [
         { maori: 'Kei te mahi au', english: 'I am working' }
       ],
+      topics: ['actions'],
       module: 2,
       nzsl_video_url: null,
       nzsl_description: null
@@ -612,6 +632,7 @@ export const WORDS_MODULE_2 = {
       examples: [
         { maori: 'Kei te ako au', english: 'I am learning' }
       ],
+      topics: ['actions'],
       culturalNote: 'Learning and teaching are intertwined in Māori worldview',
       module: 2,
       nzsl_video_url: null,
@@ -628,6 +649,7 @@ export const WORDS_MODULE_2 = {
       examples: [
         { maori: 'Kei te māhaki ia', english: 'He/she is resting' }
       ],
+      topics: ['actions'],
       module: 2,
       nzsl_video_url: null,
       nzsl_description: null
@@ -711,6 +733,7 @@ export const WORDS_MODULE_2 = {
       color: 'blue',
       pronunciation: 'koo-rah',
       theme: 'places',
+      topics: ['places'],
       examples: [
         { maori: 'Kei te haere au ki te kura', english: 'I am going to school' }
       ],
@@ -726,6 +749,7 @@ export const WORDS_MODULE_2 = {
       color: 'blue',
       pronunciation: 'tar-mah-kee mah-kow-row',
       theme: 'places',
+      topics: ['places'],
       culturalNote: 'Traditional Māori name for Auckland - "Tāmaki of a hundred lovers"',
       module: 2,
       nzsl_video_url: null,
