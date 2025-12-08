@@ -77,6 +77,11 @@ export function autoStartGameIfReady(
     }
   }
 
+  // Start turn timer for topic selection phase
+  if (result.game.phase === 'topicSelect') {
+    ctx.gameManager.startTurnTimer(roomCode);
+  }
+
   console.log(`[Auto-Start] Game started in room ${result.room.code}`);
   return result;
 }

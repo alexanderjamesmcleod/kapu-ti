@@ -66,6 +66,8 @@ function scheduleBotVoting(ctx: HandlerContext, roomCode: string): void {
       broadcastGameState(ctx, roomCode, botResult.game);
       // After bot voting, check if we're now in topicSelect
       if (botResult.game.phase === 'topicSelect') {
+        // Start turn timer for topic selection
+        ctx.gameManager.startTurnTimer(roomCode);
         setTimeout(() => {
           const topicResult = ctx.gameManager.processBotTopicSelection(roomCode);
           if (topicResult) {
@@ -97,6 +99,11 @@ export function handleStartGame(ctx: HandlerContext): void {
     }
   }
   console.log(`Game started in room ${result.room.code}`);
+
+  // Start turn timer for topic selection phase
+  if (result.game.phase === 'topicSelect') {
+    ctx.gameManager.startTurnTimer(result.room.code);
+  }
 
   // Schedule bot actions if needed
   scheduleBotActions(ctx, result.room.code, result.game);

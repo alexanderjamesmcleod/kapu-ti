@@ -98,6 +98,18 @@ gameManager.setTurnTimerCallbacks(
         send(ws, { type: 'TURN_TIMER_UPDATE', playerId, timeRemaining });
       }
     }
+  },
+  // On topic timeout - auto-select topic and broadcast
+  (roomCode: string) => {
+    const room = gameManager.getRoom(roomCode);
+    if (!room || !room.game) return;
+    
+    console.log(`[Topic Timeout] Broadcasting auto-selected topic for room ${roomCode}`);
+    
+    // Broadcast updated game state
+    const { broadcastGameState } = require('./handlers');
+    const dummyCtx = { gameManager, connections, voiceParticipants, voiceMuteState } as HandlerContext;
+    broadcastGameState(dummyCtx, roomCode, room.game);
   }
 );
 

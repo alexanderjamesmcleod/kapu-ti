@@ -31,6 +31,7 @@ const MIN_PLAYERS_TO_START = 2;
 
 // Turn timer constants
 const DEFAULT_TURN_TIME_LIMIT = 30; // seconds
+const TOPIC_SELECT_TIME_LIMIT = 15; // seconds to pick a topic
 const TURN_TIMER_CHECK_INTERVAL = 1000; // Check every second
 const MAX_AUTO_SKIPS_BEFORE_KICK = 3; // Kick after 3 consecutive auto-skips
 const RECONNECT_GRACE_PERIOD = 60 * 1000; // 60 seconds to reconnect (fast-paced like poker)
@@ -51,19 +52,22 @@ export class GameManager {
   private disconnectedPlayers: Map<string, DisconnectedPlayer> = new Map();
   // Turn timer interval reference
   private turnTimerInterval: NodeJS.Timeout | null = null;
-  // Callback for broadcasting game state
+  // Callbacks for broadcasting game state
   private onTurnTimeout?: (roomCode: string, playerId: string) => void;
   private onTurnTimerUpdate?: (roomCode: string, playerId: string, timeRemaining: number) => void;
+  private onTopicTimeout?: (roomCode: string) => void;
 
   /**
    * Set callbacks for turn timer events
    */
   setTurnTimerCallbacks(
     onTimeout: (roomCode: string, playerId: string) => void,
-    onTimerUpdate: (roomCode: string, playerId: string, timeRemaining: number) => void
+    onTimerUpdate: (roomCode: string, playerId: string, timeRemaining: number) => void,
+    onTopicTimeout?: (roomCode: string) => void
   ): void {
     this.onTurnTimeout = onTimeout;
     this.onTurnTimerUpdate = onTimerUpdate;
+    this.onTopicTimeout = onTopicTimeout;
     
     // Start the turn timer checker if not already running
     if (!this.turnTimerInterval) {
@@ -72,15 +76,43 @@ export class GameManager {
   }
 
   /**
-   * Check all active games for turn timeouts
+   * Check all active games for turn timeouts and topic selection timeouts
    */
   private checkTurnTimers(): void {
     const now = Date.now();
     
     for (const [roomCode, room] of this.rooms) {
-      if (!room.game || room.game.phase !== 'playing') continue;
+      if (!room.game) continue;
       
       const game = room.game;
+      
+      // Handle topic selection timeout
+      if (game.phase === 'topicSelect') {
+        const turnStartedAt = game.turnStartedAt;
+        if (!turnStartedAt) continue;
+        
+        const elapsedSeconds = Math.floor((now - turnStartedAt) / 1000);
+        const timeRemaining = Math.max(0, TOPIC_SELECT_TIME_LIMIT - elapsedSeconds);
+        
+        // Broadcast timer update for topic selection
+        if (this.onTurnTimerUpdate && timeRemaining <= 10) {
+          const selectorIndex = game.turnOrderWinner ?? 0;
+          const selectorId = game.players[selectorIndex]?.id;
+          if (selectorId) {
+            this.onTurnTimerUpdate(roomCode, selectorId, timeRemaining);
+          }
+        }
+        
+        // Auto-select topic on timeout
+        if (timeRemaining === 0) {
+          this.handleTopicTimeout(roomCode);
+        }
+        continue;
+      }
+      
+      // Handle playing phase turn timeout
+      if (game.phase !== 'playing') continue;
+      
       const turnStartedAt = game.turnStartedAt;
       const timeLimit = game.turnTimeLimit ?? DEFAULT_TURN_TIME_LIMIT;
       
@@ -106,6 +138,36 @@ export class GameManager {
       if (timeRemaining === 0) {
         this.handleTurnTimeout(roomCode, currentPlayer.id);
       }
+    }
+  }
+
+  /**
+   * Handle topic selection timeout - auto-pick a random topic
+   */
+  private handleTopicTimeout(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (!room || !room.game || room.game.phase !== 'topicSelect') return;
+    
+    // Pick a random topic
+    const topicIds = ['food', 'feelings', 'actions', 'animals', 'people', 'places'];
+    const randomTopic = topicIds[Math.floor(Math.random() * topicIds.length)];
+    
+    // Get the selector (who should have picked)
+    const selectorIndex = room.game.turnOrderWinner ?? 0;
+    const selectorId = room.game.players[selectorIndex]?.id;
+    
+    console.log(`[Topic Timeout] Auto-selecting topic '${randomTopic}' for room ${roomCode}`);
+    
+    const result = selectTopic(room.game, selectorId, randomTopic);
+    if (result.success) {
+      room.game = result.game;
+      // Start the turn timer for the first player
+      this.startTurnTimer(roomCode);
+    }
+    
+    // Notify via callback
+    if (this.onTopicTimeout) {
+      this.onTopicTimeout(roomCode);
     }
   }
 

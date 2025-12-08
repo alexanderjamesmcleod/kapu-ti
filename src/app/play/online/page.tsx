@@ -18,6 +18,7 @@ export default function OnlinePlayPage() {
     playerId,
     players,
     isHost,
+    isWaitingForPlayers,
 
     // Turn timer
     turnTimeRemaining,
@@ -30,11 +31,9 @@ export default function OnlinePlayPage() {
 
     // Lobby actions
     connect,
-    createRoom,
-    joinRoom,
+    findGame,
     leaveRoom,
-    setReady,
-    startGame,
+    addBot,
 
     // Game actions
     playCard,
@@ -66,12 +65,11 @@ export default function OnlinePlayPage() {
         players={players}
         isHost={isHost}
         playerId={playerId}
+        isWaitingForPlayers={isWaitingForPlayers}
         onConnect={connect}
-        onCreateRoom={createRoom}
-        onJoinRoom={joinRoom}
+        onFindGame={findGame}
         onLeaveRoom={leaveRoom}
-        onSetReady={setReady}
-        onStartGame={startGame}
+        onAddBot={addBot}
         onBack={handleBack}
       />
     );

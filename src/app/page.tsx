@@ -15,16 +15,30 @@ export default function Home() {
           Build sentences, empty your hand, or make the tea!
         </p>
 
-        {/* Play Button */}
-        <Link
-          href="/play"
-          className="inline-block bg-white text-teal-700 text-2xl font-bold
-                     px-12 py-4 rounded-full shadow-lg
-                     hover:bg-teal-50 hover:scale-105
-                     transition-all duration-200"
-        >
-          Play Now
-        </Link>
+        {/* Play Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href="/play"
+            className="inline-block bg-white text-teal-700 text-xl font-bold
+                       px-8 py-4 rounded-full shadow-lg
+                       hover:bg-teal-50 hover:scale-105
+                       transition-all duration-200"
+          >
+            🎴 Single Player
+          </Link>
+          <Link
+            href="/play/room"
+            className="inline-block bg-amber-400 text-amber-900 text-xl font-bold
+                       px-8 py-4 rounded-full shadow-lg
+                       hover:bg-amber-300 hover:scale-105
+                       transition-all duration-200"
+          >
+            🌐 Play Online
+          </Link>
+        </div>
+        <p className="mt-4 text-teal-200 text-sm">
+          Practice solo or play with friends worldwide!
+        </p>
 
         {/* How to Play */}
         <div className="mt-16 bg-white/10 backdrop-blur rounded-2xl p-8 max-w-lg mx-auto">

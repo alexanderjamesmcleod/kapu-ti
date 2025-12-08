@@ -1,183 +1,212 @@
 # Kapu Tī 🍵
 
-**Te Reo Māori Card Game** - Build sentences, empty your hand, or make the tea!
+**A Te Reo Māori card game with real-time online multiplayer** — Build sentences, speak them aloud, and race to empty your hand. The last player holding cards makes tea for everyone!
 
-## What is Kapu Tī?
+![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![WebSocket](https://img.shields.io/badge/WebSocket-Real--time-green)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-Kapu Tī (Cup of Tea) is a multiplayer card game designed to make learning Te Reo Māori fun, social, and accessible to all ages. Players race to empty their hand by building grammatically correct sentences. The last player holding cards makes tea for everyone!
+## 🎮 What is Kapu Tī?
 
-## Features
+Kapu Tī (Cup of Tea) is a multiplayer card game that makes learning Te Reo Māori fun and social. Players hold color-coded word cards (nouns, verbs, particles, etc.) and take turns building grammatically correct Māori sentences on a shared table. Say your sentence correctly, translate it to English, and shed your cards — first to empty their hand wins!
 
-- 🎴 **Color-coded cards** by word type (particles, nouns, verbs, etc.)
-- 🔊 **Audio pronunciation** from kupu.maori.nz
-- ✅ **Real-time grammar validation** with helpful feedback
-- 📚 **100+ vocabulary words** across 3 modules
-- 🎯 **Progressive challenges** from simple to complex sentences
+The twist? **The last player holding cards has to make tea for everyone.** ☕
 
-## Tech Stack
+### Key Features
 
-- **Next.js 15** (App Router)
-- **TypeScript**
-- **Tailwind CSS**
-- **Web Speech API** (TTS fallback)
+- 🌐 **Real-time Online Multiplayer** — Auto-matchmaking puts you at a table in seconds
+- 🎴 **Color-coded Grammar** — Purple particles, blue nouns, green verbs, and more
+- 🔊 **Native Audio** — Pronunciation from kupu.maori.nz with Web Speech API fallback
+- ⏱️ **Turn Timer** — 30-second turns with auto-skip for AFK players (visual countdown at ≤10s)
+- 🔄 **Reconnection** — 60-second grace period to rejoin if you disconnect
+- 🤖 **Bot Players** — Practice solo or fill empty seats
+- 💬 **In-game Chat** — Text chat with emoji reactions
+- 🎤 **Voice Chat** — WebRTC peer-to-peer voice (experimental)
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
-# Install dependencies
+# Clone and install
+cd kapu-ti
 npm install
 
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-```
-
-## Online Multiplayer
-
-Play with friends over the internet using WebSocket-based real-time gameplay!
-
-### Running Online Mode
-
-```bash
-# Terminal 1: Start WebSocket server
+# Start the WebSocket server (port 3002)
 npm run server
 
-# Terminal 2: Start Next.js app
+# In another terminal, start Next.js (port 3000)
 npm run dev
 ```
 
-### How to Play Online
+Then open [http://localhost:3000](http://localhost:3000) and click **Play Now → Online**.
 
-1. Go to `/play` → Click "Online"
-2. **Create Room**: Enter your name → Click "Create New Room" → Share 4-letter code
-3. **Join Room**: Enter your name → Enter code → Click "Join"
-4. Host clicks "Start Game"
-5. **Topic Selection**: Highest card holder picks the topic (automatic seating by card value)
-6. **Play**: Build sentences, say them aloud, and empty your hand!
+## 🎯 How to Play
 
-### Playing Over the Internet (cloudflared)
+### Game Flow
 
-Play with friends anywhere using **Cloudflare Tunnel** (free, reliable, supports WebSockets):
+1. **Find a Game** — Click "Play Online" and you're auto-matched to a table (2-10 players)
+2. **Turn Order** — Each player reveals a Māori number card; highest picks the topic
+3. **Build Sentences** — On your turn, play cards from your hand onto the table
+4. **Speak & Submit** — Say your sentence aloud in Te Reo, then translate to English
+5. **Peer Verification** — Other players vote on whether you got it right
+6. **Win Condition** — First to empty their hand wins; last player makes tea!
+
+### Card Colors & Types
+
+| Color | Type | Examples |
+|-------|------|----------|
+| 🟣 Purple | Particles | Ko, He |
+| ⬜ Gray | Articles | te, ngā |
+| 🔵 Blue | Nouns | whare, ngeru, kaiako |
+| 🔴 Red | Pronouns | au, koe, ia, mātou |
+| 🟢 Green | Verbs | haere, kai, mahi |
+| 🩵 Sky Blue | Adjectives | pai, harikoa, nui |
+| 🟡 Yellow | Tense Markers | Kei te, I, Ka |
+| 🟠 Orange | Demonstratives | tēnei, tēnā, tērā |
+
+### Sentence Patterns
+
+- **Ko sentences:** `Ko + te/ngā + noun` → "Ko te whare" (It is the house)
+- **He sentences:** `He + noun + pronoun` → "He kaiako ia" (She is a teacher)
+- **Kei te sentences:** `Kei te + verb + pronoun` → "Kei te haere au" (I am going)
+
+## 🏗️ Architecture
+
+```
+kapu-ti/
+├── src/
+│   ├── app/                    # Next.js 15 App Router
+│   │   ├── page.tsx            # Landing page
+│   │   └── play/
+│   │       ├── page.tsx        # Solo practice mode
+│   │       └── online/
+│   │           └── page.tsx    # Online multiplayer entry
+│   ├── components/
+│   │   ├── Card.tsx            # Individual word card
+│   │   ├── CardHand.tsx        # Player's hand display
+│   │   ├── SentenceBuilder.tsx # Table slots for building sentences
+│   │   ├── ChatPanel.tsx       # In-game text chat
+│   │   ├── VoiceControls.tsx   # WebRTC voice chat UI
+│   │   └── multiplayer/
+│   │       ├── OnlineLobby.tsx # Connection & room management
+│   │       └── OnlineGame.tsx  # Main game view (496 lines)
+│   ├── hooks/
+│   │   └── useOnlineGame.ts    # WebSocket client hook (599 lines)
+│   ├── lib/
+│   │   ├── audio.ts            # Pronunciation playback
+│   │   └── validators/         # Grammar validation (Ko, He, Kei te)
+│   ├── data/                   # Vocabulary & curriculum JSON
+│   └── types/
+│       └── multiplayer.types.ts # Shared game state types
+│
+└── server/                     # WebSocket server (standalone)
+    ├── index.ts                # Server entry (~180 lines)
+    ├── game-manager.ts         # Room/player/timer management (~1000 lines)
+    ├── game-logic.ts           # Pure game state functions
+    ├── types.ts                # Server message types
+    └── handlers/               # Modular message handlers
+        ├── lobby.ts            # FIND_GAME, CREATE_ROOM, JOIN_ROOM, etc.
+        ├── game.ts             # PLAY_CARD, SUBMIT_TURN, VOTE, etc.
+        ├── chat.ts             # CHAT, REACTION
+        └── voice.ts            # WebRTC signaling
+```
+
+### Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15 (App Router), React 19, TypeScript |
+| Styling | Tailwind CSS 4 |
+| Backend | Node.js WebSocket server (`ws` library) |
+| Audio | Web Speech API + kupu.maori.nz CDN |
+| Voice Chat | WebRTC via simple-peer |
+| Tunneling | Cloudflare Tunnel (for public internet play) |
+
+## 🌐 Playing Over the Internet
+
+Use **Cloudflare Tunnel** to expose your local server (free, no account needed):
 
 ```bash
-# Terminal 1: Start WebSocket server
-npm run server
-
-# Terminal 2: Start Next.js app
-npm run dev
-
-# Terminal 3: Download cloudflared (first time only)
+# Download cloudflared (Linux)
 curl -L -o /tmp/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
 chmod +x /tmp/cloudflared
 
-# Terminal 3: Expose WebSocket server (port 3002)
-/tmp/cloudflared tunnel --url http://localhost:3002
-# → Gives you: https://random-words.trycloudflare.com
+# Terminal 1: WebSocket server
+npm run server
 
-# Terminal 4: Expose web app (port 3000)
+# Terminal 2: Next.js app
+npm run dev
+
+# Terminal 3: Tunnel WebSocket (port 3002)
+/tmp/cloudflared tunnel --url http://localhost:3002
+# → https://random-words.trycloudflare.com
+
+# Terminal 4: Tunnel frontend (port 3000)
 /tmp/cloudflared tunnel --url http://localhost:3000
-# → Gives you: https://other-words.trycloudflare.com
+# → https://other-words.trycloudflare.com
 ```
 
-**To play:**
-1. Host: Connect to server, then click **"Copy Share Link"** (appears when connected)
-2. Share that link with friends - it includes the WebSocket URL!
-3. Friends open the link → Auto-connects → Ready to play!
+Share both URLs with friends. They'll need to enter the WebSocket URL in "Server Settings" before connecting.
 
-**Manual setup (if needed):**
-1. Share the frontend URL: `https://other-words.trycloudflare.com/play/room`
-2. Everyone clicks **"Server Settings"** and enters: `wss://random-words.trycloudflare.com`
-3. Click **Connect** → Should show 🟢 Connected
+## ⏱️ Recent Features
 
-**Tips:**
-- URLs are random but memorable (e.g., `brand-configure-ranges-boolean`)
-- No password page or account needed
-- Both tunnels must stay running while playing
-- cloudflared is much more reliable than localtunnel
+### Turn Timer System
+- **30-second turn limit** with visual countdown (shown at ≤10s)
+- **Pulses red** at ≤5s with "Hurry!" warning
+- **Auto-skip** for AFK players
+- **3 consecutive skips** = marked as "away"
 
-> **Alternative:** localtunnel (`npx localtunnel --port 3002`) also works but can be unreliable.
-> ⚠️ **Note:** Tunnelmole does NOT support WebSockets.
+### Reconnection System
+- **60-second grace period** to rejoin after disconnect
+- Players tracked by name for easy reconnection
+- Game seat preserved during disconnect
 
-## Game Rules
+### Modular Server Architecture
+- Handlers extracted from monolithic switch statement
+- `server/handlers/` contains lobby, game, chat, and voice handlers
+- Clean separation of concerns (~180 line main server file)
 
-1. Each player gets 7 color-coded word cards
-2. Build grammatically correct Te Reo sentences
-3. Say it correctly + translate it to play your cards
-4. First to empty their hand wins!
-5. ☕ **Last player holding cards makes tea for everyone!**
+## 📋 Roadmap
 
-## Card Colors
+- [x] Core game mechanics & grammar validation
+- [x] Audio pronunciation (kupu.maori.nz)
+- [x] Local multiplayer (pass-and-play)
+- [x] Online multiplayer (WebSocket)
+- [x] Auto-matchmaking
+- [x] Turn timers & AFK handling
+- [x] Reconnection system
+- [x] Bot players
+- [x] Text chat & reactions
+- [x] Voice chat (experimental)
+- [ ] Visual indicator for disconnected players
+- [ ] Sound effects for timer warnings
+- [ ] Spectator mode
+- [ ] Tournament/ranked play
+- [ ] Mobile PWA
+- [ ] Production deployment
 
-| Color | Type | Example |
-|-------|------|---------|
-| Purple | Particles | Ko, He |
-| Gray | Articles | te, ngā |
-| Blue | Nouns | whare, ngeru |
-| Red | Pronouns | au, koe, ia |
-| Green | Verbs | haere, kai |
-| Sky Blue | Adjectives | pai, harikoa |
-| Yellow | Tense Markers | Kei te |
-| Orange | Demonstratives | tēnei, tēnā |
+## 🌿 Cultural Values
 
-## Sentence Patterns
+This project is built with respect for Te Reo Māori and Māori culture:
 
-- **Ko sentences:** `Ko + te/ngā + noun` → "Ko te whare" (The house)
-- **He sentences:** `He + noun` → "He kaiako ia" (He is a teacher)
-- **Kei te sentences:** `Kei te + adj/verb + pronoun` → "Kei te pai au" (I am good)
+- **Kaitiakitanga** — Guardianship of te reo Māori
+- **Manaakitanga** — Hospitality (the tea-making tradition!)
+- **Whanaungatanga** — Building relationships through play
+- **Ako** — Learning and teaching together
 
-## Attribution
+## 🙏 Attribution
 
 - **Audio pronunciation** from [kupu.maori.nz](https://kupu.maori.nz)
 - Created by Kelly Keane & Franz Ombler
 - Supported by Mā te Reo
 - Built following the [12 Guidelines](https://kupu.maori.nz/about/acknowledgements) for Te Reo learning content
 
-## Project Structure
-
-```
-├── src/
-│   ├── app/           # Next.js pages
-│   ├── components/    # React components (Card, CardHand, SentenceBuilder)
-│   ├── hooks/         # React hooks (useMultiplayerGame, useOnlineGame)
-│   ├── lib/           # Validators and audio utilities
-│   ├── data/          # Vocabulary and curriculum
-│   └── types/         # TypeScript interfaces
-└── server/
-    ├── index.ts       # WebSocket server entry point
-    ├── game-manager.ts # Room and player management
-    ├── game-logic.ts  # Pure game functions
-    └── types.ts       # Server message types
-```
-
-## Roadmap
-
-- [x] Core game mechanics
-- [x] Audio pronunciation integration
-- [x] Grammar validation (Ko, He, Kei te)
-- [x] 50 progressive challenges (Module 1 & 2)
-- [x] Draw pile mechanic with solvable challenges
-- [x] Pass-and-play multiplayer (2-4 players)
-- [x] Online multiplayer (WebSocket - self-hosted)
-- [ ] Print-ready card PDF export
-- [ ] Speech-to-text validation
-- [ ] NZSL video integration
-- [ ] Mobile app (PWA)
-- [ ] Deploy to Vercel (with separate WebSocket host)
-
-## Cultural Values
-
-- **Kaitiakitanga** - Guardianship of te reo Māori
-- **Manaakitanga** - Hospitality (the tea-making!)
-- **Whanaungatanga** - Building relationships through play
-- **Ako** - Learning and teaching together
-
 ---
 
 *He aha te mea nui o te ao? He tangata, he tangata, he tangata.*
+
 *What is the most important thing in the world? It is people, it is people, it is people.*
 
 ---
 
-Built with ❤️ using [AI Kitchen](https://github.com/alexanderjamesmcleod/ai-kitchen)
+Built with ❤️ as part of [AI Kitchen](https://github.com/alexanderjamesmcleod/ai-kitchen)
