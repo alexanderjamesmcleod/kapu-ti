@@ -170,8 +170,21 @@ export function useOnlineGame(): UseOnlineGameReturn {
   }, [playerId, players]);
 
   const currentPlayer = useMemo(() => {
-    if (!game || !playerId) return null;
-    return game.players.find(p => p.id === playerId) ?? null;
+    if (!game || !playerId) {
+      // Only log if playerId exists but game doesn't (indicates potential issue)
+      if (playerId && !game) {
+        console.warn('[Kapu Ti] Player has ID but no game state - may need reconnect');
+      }
+      return null;
+    }
+    const found = game.players.find(p => p.id === playerId);
+    if (!found) {
+      console.error('[Kapu Ti] Player not found in game!', {
+        playerId,
+        gamePlayerIds: game.players.map(p => p.id)
+      });
+    }
+    return found ?? null;
   }, [game, playerId]);
 
   const currentSentence = useMemo(() => {
@@ -234,6 +247,10 @@ export function useOnlineGame(): UseOnlineGameReturn {
           break;
 
         case 'GAME_STARTED':
+          console.log('[Kapu Ti] Game started!', {
+            phase: message.game?.phase,
+            players: message.game?.players?.length
+          });
           setGame(deserializeGame(message.game));
           setPlayerId(message.yourPlayerId);
           setLobbyState('inGame');

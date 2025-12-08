@@ -28,42 +28,40 @@ interface GameTableProps {
   onToggleVideo?: (playerId: string) => void;
 }
 
-// Calculate position around rectangular table
-// Layout: opponents along top edge, self at bottom center
-function getPlayerPosition(index: number, total: number, isSelf: boolean): { top: string; left: string; transform: string } {
-  if (isSelf) {
-    // Self is always at bottom center (outside table)
-    return { top: '100%', left: '50%', transform: 'translate(-50%, 0)' };
+// Calculate position around oval table using ellipse math
+// Players are distributed around the upper arc (180° to 0°), self at bottom
+function getOvalPosition(index: number, totalOthers: number): { x: number; y: number; angle: number } {
+  if (totalOthers === 0) {
+    return { x: 50, y: 0, angle: 90 };
   }
 
-  // Distribute other players along the top edge
-  const otherTotal = total - 1; // Exclude self from count
+  // Distribute players from left (180°) to right (0°) along top arc
+  // We want even spacing between players
+  const startAngle = 160; // degrees from right (start from upper-left)
+  const endAngle = 20;    // degrees from right (end at upper-right)
+  const angleRange = startAngle - endAngle;
 
-  if (otherTotal === 0) {
-    return { top: '-8px', left: '50%', transform: 'translate(-50%, -100%)' };
+  let angle: number;
+  if (totalOthers === 1) {
+    angle = 90; // Single player at top center
+  } else {
+    // Evenly distribute
+    angle = startAngle - (index * angleRange / (totalOthers - 1));
   }
 
-  if (otherTotal === 1) {
-    // Single opponent - center top
-    return { top: '-8px', left: '50%', transform: 'translate(-50%, -100%)' };
-  }
+  // Convert to radians
+  const rad = (angle * Math.PI) / 180;
 
-  if (otherTotal === 2) {
-    // Two opponents - left and right of center
-    const positions = ['30%', '70%'];
-    return { top: '-8px', left: positions[index], transform: 'translate(-50%, -100%)' };
-  }
+  // Ellipse parameters (in percentage of container)
+  // These create an oval shape wider than tall
+  const a = 48; // horizontal radius (% of width)
+  const b = 42; // vertical radius (% of height)
 
-  if (otherTotal === 3) {
-    // Three opponents - spread across top
-    const positions = ['20%', '50%', '80%'];
-    return { top: '-8px', left: positions[index], transform: 'translate(-50%, -100%)' };
-  }
+  // Calculate position on ellipse (center at 50%, 50%)
+  const x = 50 + a * Math.cos(rad);
+  const y = 50 - b * Math.sin(rad); // subtract because CSS y increases downward
 
-  // 4+ opponents - evenly distribute
-  const spacing = 80 / (otherTotal - 1);
-  const leftPos = 10 + (index * spacing);
-  return { top: '-8px', left: `${leftPos}%`, transform: 'translate(-50%, -100%)' };
+  return { x, y, angle };
 }
 
 // Player seat component
@@ -209,72 +207,109 @@ export function GameTable({
 
   return (
     <div className="relative w-full max-w-4xl mx-auto">
-      {/* Opponent players along the top - outside the table */}
-      <div className="flex justify-center gap-4 mb-2 min-h-[70px]">
-        {otherPlayers.map((player, index) => (
-          <PlayerSeatCompact
-            key={player.id}
-            player={player}
-          />
-        ))}
-        {/* Empty seats in lobby */}
-        {onSeatClick && Array.from({ length: Math.min(emptySeats, 3) }).map((_, index) => (
+      {/* Oval table container - includes player positions */}
+      <div className="relative" style={{ paddingTop: '50%' }}> {/* Aspect ratio for oval */}
+        {/* Oval table surface */}
+        <div
+          className="absolute inset-[8%] rounded-[50%] bg-gradient-to-br from-teal-700 to-teal-900
+                     border-8 border-amber-900 shadow-2xl"
+          style={{
+            boxShadow: `
+              inset 0 0 60px rgba(0,0,0,0.3),
+              0 8px 32px rgba(0,0,0,0.4),
+              0 0 0 4px #5c3d2e,
+              0 0 0 8px #3d2517
+            `
+          }}
+        >
+          {/* Inner felt surface */}
           <div
-            key={`empty-${index}`}
-            onClick={() => onSeatClick(otherPlayers.length + index)}
-            className="w-14 h-14 rounded-full border-2 border-dashed border-gray-500
-                       bg-gray-700/50 flex items-center justify-center cursor-pointer
-                       hover:border-gray-400 hover:bg-gray-600/50 transition-colors"
+            className="absolute inset-3 rounded-[50%] bg-gradient-to-br from-teal-600 via-teal-700 to-teal-800"
+            style={{
+              boxShadow: 'inset 0 0 40px rgba(0,0,0,0.2)'
+            }}
           >
-            <span className="text-xl text-gray-500">+</span>
-          </div>
-        ))}
-      </div>
+            {/* Felt texture overlay */}
+            <div
+              className="absolute inset-0 rounded-[50%] opacity-30"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E")`
+              }}
+            />
 
-      {/* Table surface - rectangular with rounded corners */}
-      <div className="relative rounded-2xl bg-gradient-to-br from-teal-700 to-teal-900
-                     border-4 border-teal-950 shadow-2xl p-1">
-        {/* Inner felt */}
-        <div className="rounded-xl bg-gradient-to-br from-teal-600 to-teal-800
-                       border-2 border-teal-700/50 py-4 px-6">
-
-          {/* Center content (sentence builder) + Topic */}
-          <div className="flex flex-col items-center justify-center min-h-[120px]">
-            {/* Topic indicator - above sentence builder */}
-            {currentTopic && (
-              <div className="mb-2">
-                <div className="px-3 py-1 bg-white/90 rounded-full shadow-md text-sm">
-                  <span>{currentTopic.icon}</span>
-                  <span className="ml-1 font-bold text-teal-800">{currentTopic.name}</span>
-                  <span className="ml-1 text-xs text-teal-600">({currentTopic.maori})</span>
+            {/* Center content area */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
+              {/* Topic indicator */}
+              {currentTopic && (
+                <div className="mb-3">
+                  <div className="px-4 py-2 bg-white/95 rounded-full shadow-lg text-sm">
+                    <span className="text-lg">{currentTopic.icon}</span>
+                    <span className="ml-2 font-bold text-teal-800">{currentTopic.name}</span>
+                    <span className="ml-2 text-xs text-teal-600">({currentTopic.maori})</span>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            <div className="bg-teal-900/30 rounded-xl p-3 backdrop-blur-sm w-full">
-              {centerContent || (
-                <p className="text-white/60 text-center text-sm">
-                  Waiting for game to start...
-                </p>
               )}
+
+              {/* Sentence builder area */}
+              <div className="bg-black/20 rounded-2xl p-4 backdrop-blur-sm max-w-[80%]">
+                {centerContent || (
+                  <p className="text-white/60 text-center text-sm">
+                    Waiting for game to start...
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Players positioned around the oval */}
+        {otherPlayers.map((player, index) => {
+          const pos = getOvalPosition(index, otherPlayers.length);
+          return (
+            <div
+              key={player.id}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
+              style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+            >
+              <PlayerSeatCompact player={player} />
+            </div>
+          );
+        })}
+
+        {/* Empty seats around oval (in lobby mode) */}
+        {onSeatClick && Array.from({ length: Math.min(emptySeats, 3) }).map((_, index) => {
+          const pos = getOvalPosition(otherPlayers.length + index, otherPlayers.length + emptySeats);
+          return (
+            <div
+              key={`empty-${index}`}
+              onClick={() => onSeatClick(otherPlayers.length + index)}
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10
+                         w-12 h-12 rounded-full border-2 border-dashed border-gray-400
+                         bg-gray-700/50 flex items-center justify-center cursor-pointer
+                         hover:border-white hover:bg-gray-600/50 transition-all"
+              style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+            >
+              <span className="text-xl text-gray-400">+</span>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Self player indicator - compact, below table */}
+      {/* Self player indicator - below table */}
       {selfPlayer && (
-        <div className="flex justify-center mt-2">
-          <PlayerSeatCompact
-            player={selfPlayer}
-            onToggleVideo={onToggleVideo}
-          />
+        <div className="flex justify-center -mt-4 relative z-20">
+          <div className="bg-teal-900/80 px-4 py-2 rounded-xl border-2 border-teal-600">
+            <PlayerSeatCompact
+              player={selfPlayer}
+              onToggleVideo={onToggleVideo}
+            />
+          </div>
         </div>
       )}
 
-      {/* Bottom content (your hand) - no longer needed here, handled in page */}
+      {/* Bottom content (your hand) */}
       {bottomContent && (
-        <div className="mt-2">
+        <div className="mt-4">
           {bottomContent}
         </div>
       )}

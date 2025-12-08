@@ -685,7 +685,7 @@ export default function RoomPage() {
 
         {/* Playing View */}
         {phase === 'playing' && online.game && (
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
             {/* Connection warning */}
             {online.connectionState !== 'connected' && (
               <div className="mb-4 px-4 py-2 bg-amber-500/30 text-amber-300 rounded-lg text-sm flex items-center justify-between">
@@ -812,8 +812,8 @@ export default function RoomPage() {
               currentTopic={online.game.currentTopic}
             />
 
-            {/* Hand - positioned below the table */}
-            <div className="mt-3 bg-white/95 rounded-xl shadow-lg p-3 relative z-10">
+            {/* Hand - positioned below the table, always visible with sticky positioning */}
+            <div className="mt-3 bg-white/95 rounded-xl shadow-lg p-3 relative z-10 flex-shrink-0 mb-20">
               {/* Hand header with actions */}
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-gray-700">

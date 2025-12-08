@@ -163,6 +163,8 @@ Round 4 (morph): "Kei te tino matekai au" → "I am very hungry"
 - Topic indicator below sentence builder
 - Hand panel positioned below table (not overlapping)
 - Spectator view
+- **Responsive scrolling:** Playing view scrolls when content exceeds viewport
+- **Brighter card colors:** Updated color palette for better visibility
 
 ### Multiplayer Sentence Builder
 - Real-time slot-based sentence construction
