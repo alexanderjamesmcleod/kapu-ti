@@ -8,7 +8,7 @@ interface CardProps {
   card: CardType;
   selected?: boolean;
   disabled?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   showEnglish?: boolean;
   onClick?: (card: CardType) => void;
 }
@@ -73,6 +73,7 @@ const colorClasses: Record<string, { bg: string; border: string; text: string }>
 };
 
 const sizeClasses = {
+  xs: 'w-14 h-20 text-[0.5rem]',  // Extra small for mobile portrait
   sm: 'w-20 h-28 text-xs',
   md: 'w-28 h-36 text-sm',
   lg: 'w-36 h-48 text-base',
@@ -131,22 +132,24 @@ export function Card({
       aria-pressed={selected}
       aria-disabled={disabled}
     >
-      {/* Audio button */}
-      <button
-        className={`
-          absolute top-1 right-1 w-6 h-6 rounded-full
-          flex items-center justify-center
-          ${isPlaying ? 'bg-green-500 text-white' : 'bg-white/80 hover:bg-white'}
-          transition-colors text-xs
-        `}
-        onClick={handlePlayAudio}
-        aria-label={`Play pronunciation of ${card.maori}`}
-      >
-        {isPlaying ? '♪' : '🔊'}
-      </button>
+      {/* Audio button - hidden on xs size */}
+      {size !== 'xs' && (
+        <button
+          className={`
+            absolute top-1 right-1 w-6 h-6 rounded-full
+            flex items-center justify-center
+            ${isPlaying ? 'bg-green-500 text-white' : 'bg-white/80 hover:bg-white'}
+            transition-colors text-xs
+          `}
+          onClick={handlePlayAudio}
+          aria-label={`Play pronunciation of ${card.maori}`}
+        >
+          {isPlaying ? '♪' : '🔊'}
+        </button>
+      )}
 
       {/* Main word */}
-      <div className={`font-bold ${colors.text} text-center leading-tight mt-4`}>
+      <div className={`font-bold ${colors.text} text-center leading-tight ${size === 'xs' ? 'mt-1' : 'mt-4'}`}>
         {showEnglish ? card.english : card.maori}
       </div>
 

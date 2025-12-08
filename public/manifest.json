@@ -1,0 +1,42 @@
+{
+  "name": "Kapu Tī - Te Reo Māori Card Game",
+  "short_name": "Kapu Tī",
+  "description": "Learn Te Reo Māori through a fun card game. Build sentences, empty your hand, or make the tea!",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0D9488",
+  "theme_color": "#0D9488",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/docs/online-multiplayer-screenshot.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Multiplayer game in progress"
+    }
+  ],
+  "categories": ["games", "education"],
+  "lang": "en-NZ",
+  "dir": "ltr"
+}

@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Safe area insets for notched devices */
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
 }
 
 @theme inline {
@@ -23,4 +28,123 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* PWA: Full height on mobile */
+html, body {
+  height: 100%;
+  height: -webkit-fill-available;
+  overflow: hidden;
+}
+
+/* Prevent rubber-banding on iOS */
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area padding for notched devices */
+.safe-area-top {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.safe-area-all {
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* Mobile game viewport - fills screen exactly */
+.game-viewport {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Landscape orientation adjustments */
+@media (orientation: landscape) and (max-height: 500px) {
+  .game-viewport {
+    flex-direction: row;
+  }
+
+  .landscape-sidebar {
+    width: 30%;
+    max-width: 200px;
+    flex-shrink: 0;
+  }
+
+  .landscape-main {
+    flex: 1;
+  }
+}
+
+/* Card hand horizontal scroll on mobile */
+.card-hand-scroll {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+  scrollbar-width: none; /* Firefox */
+}
+
+.card-hand-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari */
+}
+
+.card-hand-scroll > * {
+  scroll-snap-align: center;
+  flex-shrink: 0;
+}
+
+/* Touch-friendly button sizing */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Responsive text sizing */
+.text-responsive {
+  font-size: clamp(0.75rem, 2.5vw, 1rem);
+}
+
+/* Hide elements on small screens */
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Show only on mobile */
+@media (min-width: 641px) {
+  .show-mobile-only {
+    display: none !important;
+  }
+}
+
+/* Compact card sizing for mobile */
+@media (max-width: 640px) {
+  .card-compact {
+    width: 4.5rem !important;
+    height: 6rem !important;
+    font-size: 0.65rem !important;
+  }
+
+  .card-compact .text-sm {
+    font-size: 0.6rem !important;
+  }
+}
+
+/* Prevent text selection during gameplay */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }

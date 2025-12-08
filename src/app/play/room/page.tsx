@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, VoteResultModal, SoundToggle } from '@/components';
+import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, VoteResultModal, SoundToggle, MobileGameView } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
 import VoiceControls from '@/components/VoiceControls';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -10,6 +10,7 @@ import type { TablePlayer } from '@/components/GameTable';
 import type { Card as CardType } from '@/types';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 type RoomPhase = 'menu' | 'create' | 'join' | 'browse' | 'lobby' | 'spectate' | 'playing';
 
@@ -100,6 +101,9 @@ export default function RoomPage() {
 
   // Chat panel state
   const [isChatOpen, setIsChatOpen] = useState(false);
+
+  // Mobile detection
+  const isMobile = useIsMobile();
 
   // Online game hook
   const online = useOnlineGame();
@@ -284,9 +288,9 @@ export default function RoomPage() {
   const isGamePhase = ['spectate', 'playing'].includes(phase);
 
   return (
-    <div className={`p-2 ${
+    <div className={`p-2 safe-area-all no-select ${
       isGamePhase
-        ? 'bg-gradient-to-b from-gray-900 to-gray-800 h-screen overflow-hidden'
+        ? 'bg-gradient-to-b from-gray-900 to-gray-800 game-viewport'
         : 'min-h-screen bg-gradient-to-b from-teal-50 to-blue-50'
     }`}>
       <div className={isGamePhase ? 'max-w-5xl mx-auto h-full flex flex-col' : 'max-w-md mx-auto'}>
@@ -822,6 +826,49 @@ export default function RoomPage() {
             {/* ===== PLAYING PHASE (and other phases like verification, turnEnd) ===== */}
             {online.game.phase !== 'topicSelect' && (
               <>
+                {/* MOBILE VIEW */}
+                {isMobile ? (
+                  <MobileGameView
+                    game={online.game}
+                    players={online.game.players.map((p, idx) => ({
+                      id: p.id,
+                      name: p.name,
+                      avatar: AVATARS[idx % AVATARS.length],
+                      cardsInHand: p.hand.length,
+                      isCurrentTurn: online.game!.currentPlayerIndex === idx,
+                      isSelf: p.id === online.playerId,
+                      isActive: p.isActive,
+                    }))}
+                    playerId={online.playerId || ''}
+                    isMyTurn={online.isMyTurn}
+                    selectedCard={selectedCard}
+                    onSelectCard={setSelectedCard}
+                    onPlayCard={(slotId) => {
+                      if (selectedCard) {
+                        online.playCard(selectedCard.id, slotId);
+                      }
+                    }}
+                    onStackCard={(slotId) => {
+                      if (selectedCard) {
+                        online.stackCard(selectedCard.id, slotId);
+                      }
+                    }}
+                    onCreateSlot={() => {
+                      if (selectedCard) {
+                        online.createSlot(selectedCard.id);
+                      }
+                    }}
+                    onPassTurn={() => online.passTurn()}
+                    onUndoLastCard={() => online.undoLastCard()}
+                    onSubmitTurn={(sentence, translation) => online.submitTurn(sentence, translation)}
+                    currentTopic={online.game.currentTopic}
+                    turnTimeRemaining={online.turnTimeRemaining}
+                    chillMode={online.chillMode}
+                    sounds={sounds}
+                  />
+                ) : (
+                  /* DESKTOP VIEW */
+                  <>
                 {/* Turn indicator with timer */}
                 <div className="mb-2 flex items-center justify-between text-xs flex-shrink-0">
                   <span className="text-teal-400">{online.game.phase}</span>
@@ -832,8 +879,8 @@ export default function RoomPage() {
                     {/* Turn timer - shows when <= 10 seconds */}
                     {online.turnTimeRemaining !== null && online.turnTimeRemaining <= 10 && online.game.phase === 'playing' && (
                       <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                        online.turnTimeRemaining <= 5 
-                          ? 'bg-red-500 text-white animate-pulse' 
+                        online.turnTimeRemaining <= 5
+                          ? 'bg-red-500 text-white animate-pulse'
                           : 'bg-amber-500 text-white'
                       }`}>
                         {online.turnTimeRemaining}s
@@ -950,6 +997,8 @@ export default function RoomPage() {
                 </div>
               )}
             </div>
+                  </>
+                )}
               </>
             )}
 
