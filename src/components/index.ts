@@ -10,3 +10,4 @@ export { VoiceControls } from './VoiceControls';
 export { default as KoreroButton } from './KoreroButton';
 export { default as VotingOverlay } from './VotingOverlay';
 export { default as VoteResultModal } from './VoteResultModal';
+export { default as SoundToggle } from './SoundToggle';

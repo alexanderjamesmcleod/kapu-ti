@@ -111,10 +111,11 @@ export function handleStartGame(ctx: HandlerContext): void {
 
 export function handleGameAction(
   ctx: HandlerContext,
-  message: Extract<ClientMessage, 
+  message: Extract<ClientMessage,
     | { type: 'REVEAL_TURN_ORDER_CARD' }
     | { type: 'SELECT_TOPIC' }
     | { type: 'PLAY_CARD' }
+    | { type: 'STACK_CARD' }
     | { type: 'CREATE_SLOT' }
     | { type: 'SUBMIT_TURN' }
     | { type: 'VOTE' }

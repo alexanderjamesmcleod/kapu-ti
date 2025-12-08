@@ -171,6 +171,27 @@ export function handleAddBot(
 }
 
 /**
+ * Handle SET_CHILL_MODE - host toggles turn timers on/off
+ * When chill mode is enabled, no turn time limits apply
+ */
+export function handleSetChillMode(
+  ctx: HandlerContext,
+  message: Extract<ClientMessage, { type: 'SET_CHILL_MODE' }>
+): void {
+  const result = ctx.gameManager.setChillMode(ctx.socketId, message.enabled);
+  if ('error' in result) {
+    send(ctx.ws, { type: 'ERROR', message: result.error });
+  } else {
+    // Notify all players in the room about chill mode change
+    broadcast(ctx, result.code, {
+      type: 'CHILL_MODE_CHANGED',
+      enabled: message.enabled,
+    });
+    console.log(`[Chill Mode] Room ${result.code} set to ${message.enabled ? 'chill' : 'timed'} mode`);
+  }
+}
+
+/**
  * Handle RECONNECT - player rejoining after disconnect
  */
 export function handleReconnect(

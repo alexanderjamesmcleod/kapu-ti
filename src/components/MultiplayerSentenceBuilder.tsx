@@ -12,6 +12,7 @@ interface MultiplayerSentenceBuilderProps {
   isMyTurn: boolean;
   currentPlayerName: string;
   onPlayCard: (slotId: string) => void;
+  onStackCard: (slotId: string) => void;  // Stack same-color card on occupied slot (any player)
   onCreateSlot: () => void;
 }
 
@@ -52,6 +53,7 @@ export function MultiplayerSentenceBuilder({
   isMyTurn,
   currentPlayerName,
   onPlayCard,
+  onStackCard,
   onCreateSlot,
 }: MultiplayerSentenceBuilderProps) {
   // Sort slots by position
@@ -63,10 +65,20 @@ export function MultiplayerSentenceBuilder({
     .filter(Boolean)
     .join(' ');
 
-  // Check if selected card can be played
+  // Check if selected card can be played (current player's turn only)
   const canPlayOnSlot = (slot: TableSlot): boolean => {
     if (!selectedCard || !isMyTurn) return false;
     return canPlayCardOnSlot(selectedCard, slot, turnState);
+  };
+
+  // Check if selected card can be stacked on an occupied slot (any player)
+  // Stacking: place same-color card on a slot that already has cards
+  const canStackOnSlot = (slot: TableSlot): boolean => {
+    if (!selectedCard) return false;
+    // Slot must have cards already
+    if (slot.cards.length === 0) return false;
+    // Card color must match slot color
+    return selectedCard.color === slot.color;
   };
 
   const canAddNewSlot = selectedCard && isMyTurn && canCreateSlot(selectedCard, turnState);
@@ -85,16 +97,27 @@ export function MultiplayerSentenceBuilder({
         {sortedSlots.map((slot) => {
           const topCard = getTopCard(slot);
           const colors = slotColors[slot.color] || slotColors.gray;
-          const canPlay = canPlayOnSlot(slot);
+          const canPlay = canPlayOnSlot(slot);  // Current player playing on their turn
+          const canStack = canStackOnSlot(slot);  // Any player can stack same-color on occupied slot
+          const isInteractive = canPlay || canStack;
+
+          // Handle click - prioritize play (current player's turn action) over stack
+          const handleClick = () => {
+            if (canPlay) {
+              onPlayCard(slot.id);
+            } else if (canStack) {
+              onStackCard(slot.id);
+            }
+          };
 
           return (
             <div
               key={slot.id}
-              onClick={() => canPlay && onPlayCard(slot.id)}
+              onClick={handleClick}
               className={`
                 relative
-                ${canPlay ? 'cursor-pointer' : ''}
-                ${!topCard && !canPlay ? 'opacity-60' : ''}
+                ${isInteractive ? 'cursor-pointer' : ''}
+                ${!topCard && !isInteractive ? 'opacity-60' : ''}
               `}
             >
               {topCard ? (
@@ -111,11 +134,17 @@ export function MultiplayerSentenceBuilder({
                       {slot.cards.length}
                     </div>
                   )}
-                  {/* Play here overlay for stacking */}
+                  {/* Play/Stack overlay - amber for turn play, teal for stacking */}
                   {canPlay && (
                     <div className="absolute inset-0 flex items-center justify-center
                                   bg-amber-400/30 rounded-xl animate-pulse ring-2 ring-amber-400">
                       <span className="text-2xl text-amber-600 font-bold">+</span>
+                    </div>
+                  )}
+                  {!canPlay && canStack && (
+                    <div className="absolute inset-0 flex items-center justify-center
+                                  bg-teal-400/30 rounded-xl animate-pulse ring-2 ring-teal-400">
+                      <span className="text-2xl text-teal-600 font-bold">+</span>
                     </div>
                   )}
                 </div>

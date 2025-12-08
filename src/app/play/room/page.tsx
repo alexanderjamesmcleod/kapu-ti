@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, VoteResultModal } from '@/components';
+import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, VoteResultModal, SoundToggle } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
 import VoiceControls from '@/components/VoiceControls';
+import { useGameSounds } from '@/hooks/useGameSounds';
 import { getSentenceFromSlots } from '@/types/multiplayer.types';
 import type { TablePlayer } from '@/components/GameTable';
 import type { Card as CardType } from '@/types';
@@ -109,6 +110,14 @@ export default function RoomPage() {
     playerName: playerName,
     roomCode: online.roomCode,
     sendMessage: online.sendMessage,
+  });
+
+  // Game sounds hook
+  const sounds = useGameSounds({
+    turnTimeRemaining: online.turnTimeRemaining,
+    isMyTurn: online.isMyTurn,
+    gamePhase: online.game?.phase ?? null,
+    chillMode: online.chillMode,
   });
 
   // Wire up voice event handlers from WebSocket to voice chat hook
@@ -296,11 +305,14 @@ export default function RoomPage() {
                phase === 'playing' ? '🎮 Playing' :
                'Online'}
             </h1>
-            {roomCode && (
-              <span className={`font-mono text-sm ${isGamePhase ? 'text-gray-400' : 'text-gray-500'}`}>
-                {roomCode}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {roomCode && (
+                <span className={`font-mono text-sm ${isGamePhase ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {roomCode}
+                </span>
+              )}
+              <SoundToggle compact />
+            </div>
           </div>
         </header>
 
@@ -606,6 +618,46 @@ export default function RoomPage() {
               </div>
             </div>
 
+            {/* Host Controls: Chill Mode Toggle */}
+            {isHost && (
+              <div className="bg-white rounded-xl p-4 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-700">Chill Mode</h3>
+                    <p className="text-sm text-gray-500">No turn timers - take your time!</p>
+                  </div>
+                  <button
+                    onClick={() => online.setChillMode(!online.chillMode)}
+                    className={`
+                      relative w-14 h-8 rounded-full transition-colors duration-200
+                      ${online.chillMode ? 'bg-teal-500' : 'bg-gray-300'}
+                    `}
+                  >
+                    <span
+                      className={`
+                        absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow
+                        transition-transform duration-200
+                        ${online.chillMode ? 'translate-x-6' : 'translate-x-0'}
+                      `}
+                    />
+                  </button>
+                </div>
+                {online.chillMode && (
+                  <p className="text-xs text-teal-600 mt-2">
+                    Relaxed pace - no pressure!
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Chill Mode Indicator (for non-hosts) */}
+            {!isHost && online.chillMode && (
+              <div className="bg-teal-50 rounded-xl p-3 text-center">
+                <p className="text-teal-700 font-medium">Chill Mode Active</p>
+                <p className="text-teal-600 text-sm">No turn timers - play at your own pace</p>
+              </div>
+            )}
+
             {/* Voice Chat Controls */}
             <div className="flex justify-center">
               <VoiceControls
@@ -741,7 +793,12 @@ export default function RoomPage() {
                     return (
                       <button
                         key={topic.id}
-                        onClick={() => isWinner && online.selectTopic(topic.id)}
+                        onClick={() => {
+                          if (isWinner) {
+                            online.selectTopic(topic.id);
+                            sounds.playTopicSelectSound();
+                          }
+                        }}
                         disabled={!isWinner}
                         className={`
                           p-4 rounded-xl flex flex-col items-center gap-2
@@ -808,12 +865,21 @@ export default function RoomPage() {
                   onPlayCard={(slotId) => {
                     if (selectedCard) {
                       online.playCard(selectedCard.id, slotId);
+                      sounds.playCardSound();
+                      setSelectedCard(null);
+                    }
+                  }}
+                  onStackCard={(slotId) => {
+                    if (selectedCard) {
+                      online.stackCard(selectedCard.id, slotId);
+                      sounds.playCardSound();
                       setSelectedCard(null);
                     }
                   }}
                   onCreateSlot={() => {
                     if (selectedCard) {
                       online.createSlot(selectedCard.id);
+                      sounds.playCardSound();
                       setSelectedCard(null);
                     }
                   }}
@@ -833,7 +899,10 @@ export default function RoomPage() {
                   <div className="flex gap-2 items-center">
                     {online.game.turnState.playedCards.length > 0 && (
                       <button
-                        onClick={() => online.undoLastCard()}
+                        onClick={() => {
+                          online.undoLastCard();
+                          sounds.playCardPickupSound();
+                        }}
                         className="px-3 py-1 bg-gray-500 text-white rounded-lg text-sm font-semibold hover:bg-gray-600"
                       >
                         Undo
@@ -861,16 +930,23 @@ export default function RoomPage() {
                 cards={online.currentPlayer?.hand || []}
                 selectedCardId={selectedCard?.id}
                 onSelectCard={(card) => {
-                  if (online.isMyTurn) {
+                  // Allow card selection for:
+                  // 1. Current player's turn (normal play)
+                  // 2. During playing phase for stacking (any player can stack same-color cards)
+                  if (online.isMyTurn || online.game?.phase === 'playing') {
                     setSelectedCard(selectedCard?.id === card.id ? null : card);
                   }
                 }}
               />
 
-              {/* Not your turn indicator */}
+              {/* Not your turn indicator - show stack hint when not your turn */}
               {!online.isMyTurn && (
                 <div className="mt-2 text-center text-gray-500 text-sm">
-                  Waiting for {online.game.players[online.game.currentPlayerIndex]?.name}...
+                  {selectedCard ? (
+                    <span className="text-teal-500">Tap a matching color slot to stack your card</span>
+                  ) : (
+                    <>Waiting for {online.game.players[online.game.currentPlayerIndex]?.name}... <span className="text-teal-400 text-xs">(select a card to stack)</span></>
+                  )}
                 </div>
               )}
             </div>

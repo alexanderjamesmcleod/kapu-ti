@@ -10,6 +10,7 @@ import {
   generateRoomCode,
   initializeGame,
   playCard,
+  stackCard,
   createSlot,
   submitTurn,
   vote,
@@ -80,9 +81,12 @@ export class GameManager {
    */
   private checkTurnTimers(): void {
     const now = Date.now();
-    
+
     for (const [roomCode, room] of this.rooms) {
       if (!room.game) continue;
+
+      // Skip timer logic in chill mode
+      if (room.chillMode) continue;
       
       const game = room.game;
       
@@ -408,6 +412,7 @@ export class GameManager {
       createdAt: now,
       lastActivity: now,
       hostId: playerId,
+      chillMode: false,  // Timers enabled by default
     };
 
     this.rooms.set(roomCode, room);
@@ -478,6 +483,7 @@ export class GameManager {
         createdAt: now,
         lastActivity: now,
         hostId: playerId,
+        chillMode: false,  // Timers enabled by default
       };
 
       this.rooms.set(roomCode, targetRoom);
@@ -681,6 +687,28 @@ export class GameManager {
     return room;
   }
 
+  // Toggle chill mode (host only - disables turn timers)
+  setChillMode(socketId: string, enabled: boolean): Room | { error: string } {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId) return { error: 'Player not found' };
+
+    const roomCode = this.playerToRoom.get(playerId);
+    if (!roomCode) return { error: 'Room not found' };
+
+    const room = this.rooms.get(roomCode);
+    if (!room) return { error: 'Room not found' };
+
+    // Only host can toggle chill mode
+    if (room.hostId !== playerId) {
+      return { error: 'Only host can change chill mode' };
+    }
+
+    room.chillMode = enabled;
+    console.log(`[Chill Mode] Room ${roomCode} chill mode ${enabled ? 'enabled' : 'disabled'}`);
+
+    return room;
+  }
+
   // Add a bot player to the room
   addBot(socketId: string, botName?: string): { room: Room; bot: RoomPlayer } | { error: string } {
     const playerId = this.socketToPlayer.get(socketId);
@@ -783,6 +811,9 @@ export class GameManager {
         break;
       case 'PLAY_CARD':
         result = playCard(room.game, playerId, message.cardId, message.slotId);
+        break;
+      case 'STACK_CARD':
+        result = stackCard(room.game, playerId, message.cardId, message.slotId);
         break;
       case 'CREATE_SLOT':
         result = createSlot(room.game, playerId, message.cardId);

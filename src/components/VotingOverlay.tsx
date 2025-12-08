@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { VerificationVote } from '@/types/multiplayer.types';
+import { playSound } from '@/lib/sounds';
 
 interface VotingOverlayProps {
   speakerName: string;
@@ -87,7 +88,10 @@ export default function VotingOverlay({
         {!isCurrentPlayer && !hasVoted && (
           <div className="flex gap-4 mb-6">
             <button
-              onClick={() => onVote(true)}
+              onClick={() => {
+                playSound('voteSubmit');
+                onVote(true);
+              }}
               className="
                 flex-1 py-6 rounded-2xl
                 bg-gradient-to-br from-green-500 to-green-700
@@ -102,7 +106,10 @@ export default function VotingOverlay({
               <span className="text-green-200 text-sm">Approve</span>
             </button>
             <button
-              onClick={() => onVote(false)}
+              onClick={() => {
+                playSound('voteSubmit');
+                onVote(false);
+              }}
               className="
                 flex-1 py-6 rounded-2xl
                 bg-gradient-to-br from-red-500 to-red-700

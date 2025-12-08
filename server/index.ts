@@ -21,6 +21,7 @@ import {
   handleLeaveRoom,
   handleSetReady,
   handleAddBot,
+  handleSetChillMode,
   // Game handlers
   handleStartGame,
   handleGameAction,
@@ -174,6 +175,9 @@ wss.on('connection', (ws: WebSocket) => {
         case 'ADD_BOT':
           handleAddBot(ctx, message);
           break;
+        case 'SET_CHILL_MODE':
+          handleSetChillMode(ctx, message);
+          break;
 
         // Game messages
         case 'START_GAME':
@@ -182,6 +186,7 @@ wss.on('connection', (ws: WebSocket) => {
         case 'REVEAL_TURN_ORDER_CARD':
         case 'SELECT_TOPIC':
         case 'PLAY_CARD':
+        case 'STACK_CARD':
         case 'CREATE_SLOT':
         case 'SUBMIT_TURN':
         case 'VOTE':

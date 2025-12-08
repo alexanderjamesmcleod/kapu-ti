@@ -218,6 +218,68 @@ export function playCard(
   return { success: true, game: newGame };
 }
 
+// Stack a card on an occupied slot (any player can do this during playing phase)
+// This allows players to change the sentence by stacking same-color cards
+export function stackCard(
+  game: MultiplayerGame,
+  playerId: string,
+  cardId: string,
+  slotId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  // Must be in playing phase
+  if (game.phase !== 'playing') {
+    return { success: false, game, error: 'Can only stack cards during playing phase' };
+  }
+
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+  if (playerIndex === -1) {
+    return { success: false, game, error: 'Player not found' };
+  }
+
+  const player = game.players[playerIndex];
+  const card = player.hand.find(c => c.id === cardId);
+  const slot = game.tableSlots.find(s => s.id === slotId);
+
+  if (!card) {
+    return { success: false, game, error: 'Card not in hand' };
+  }
+
+  if (!slot) {
+    return { success: false, game, error: 'Slot not found' };
+  }
+
+  // Slot must already have cards (can't stack on empty)
+  if (slot.cards.length === 0) {
+    return { success: false, game, error: 'Cannot stack on empty slot - use playCard instead' };
+  }
+
+  if (card.color !== slot.color) {
+    return { success: false, game, error: 'Card color does not match slot' };
+  }
+
+  // Update game state - remove card from player's hand, add to slot
+  const newPlayers = [...game.players];
+  const newHand = player.hand.filter(c => c.id !== cardId);
+  newPlayers[playerIndex] = { ...player, hand: newHand };
+
+  const newSlots = game.tableSlots.map(s =>
+    s.id === slotId
+      ? { ...s, cards: [...s.cards, card] }
+      : s
+  );
+
+  // Note: We do NOT update turnState.playedCards or colorsPlayedThisTurn
+  // because this is not part of the current player's turn - it's an interrupt
+
+  const newGame: MultiplayerGame = {
+    ...game,
+    players: newPlayers,
+    tableSlots: newSlots,
+  };
+
+  return { success: true, game: newGame };
+}
+
 // Create a new slot with a card
 export function createSlot(
   game: MultiplayerGame,

@@ -56,6 +56,7 @@ type ServerMessage =
   | { type: 'PLAYER_JOINED'; player: RoomPlayer }
   | { type: 'PLAYER_LEFT'; playerId: string }
   | { type: 'PLAYER_READY'; playerId: string; ready: boolean }
+  | { type: 'CHILL_MODE_CHANGED'; enabled: boolean }
   | { type: 'GAME_STARTED'; game: MultiplayerGame; yourPlayerId: string }
   | { type: 'GAME_STATE'; game: MultiplayerGame }
   | { type: 'CHAT_MESSAGE'; message: ChatMessage }
@@ -95,6 +96,7 @@ interface UseOnlineGameReturn {
   players: RoomPlayer[];
   isHost: boolean;
   isWaitingForPlayers: boolean;  // Waiting for more players to auto-start
+  chillMode: boolean;  // When true, no turn timers
 
   // Turn timer state
   turnTimeRemaining: number | null;  // Seconds left, null when not active
@@ -121,6 +123,7 @@ interface UseOnlineGameReturn {
   joinRoom: (roomCode: string, playerName: string) => void;
   leaveRoom: () => void;
   setReady: (ready: boolean) => void;
+  setChillMode: (enabled: boolean) => void;  // Host only - toggle turn timers
   addBot: (botName?: string) => void;
   startGame: () => void;
 
@@ -128,6 +131,7 @@ interface UseOnlineGameReturn {
   revealTurnOrderCard: () => void;
   selectTopic: (topicId: string) => void;
   playCard: (cardId: string, slotId: string) => void;
+  stackCard: (cardId: string, slotId: string) => void;  // Stack on occupied slot (any player)
   createSlot: (cardId: string) => void;
   submitTurn: (spoken: string, translation: string) => void;
   vote: (approved: boolean) => void;
@@ -183,6 +187,7 @@ export function useOnlineGame(): UseOnlineGameReturn {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [players, setPlayers] = useState<RoomPlayer[]>([]);
   const [isWaitingForPlayers, setIsWaitingForPlayers] = useState(false);
+  const [chillMode, setChillModeState] = useState(false);
 
   // Game state
   const [game, setGame] = useState<MultiplayerGame | null>(null);
@@ -300,6 +305,11 @@ export function useOnlineGame(): UseOnlineGameReturn {
           setPlayers(prev => prev.map(p =>
             p.id === message.playerId ? { ...p, isReady: message.ready } : p
           ));
+          break;
+
+        case 'CHILL_MODE_CHANGED':
+          setChillModeState(message.enabled);
+          console.log(`[Kapu Ti] Chill mode ${message.enabled ? 'enabled' : 'disabled'}`);
           break;
 
         case 'GAME_STARTED':
@@ -476,6 +486,10 @@ export function useOnlineGame(): UseOnlineGameReturn {
     send({ type: 'SET_READY', ready });
   }, [send]);
 
+  const setChillMode = useCallback((enabled: boolean) => {
+    send({ type: 'SET_CHILL_MODE', enabled });
+  }, [send]);
+
   const addBot = useCallback((botName?: string) => {
     send({ type: 'ADD_BOT', botName });
   }, [send]);
@@ -495,6 +509,10 @@ export function useOnlineGame(): UseOnlineGameReturn {
 
   const playCard = useCallback((cardId: string, slotId: string) => {
     send({ type: 'PLAY_CARD', cardId, slotId });
+  }, [send]);
+
+  const stackCard = useCallback((cardId: string, slotId: string) => {
+    send({ type: 'STACK_CARD', cardId, slotId });
   }, [send]);
 
   const createSlot = useCallback((cardId: string) => {
@@ -549,6 +567,7 @@ export function useOnlineGame(): UseOnlineGameReturn {
     players,
     isHost,
     isWaitingForPlayers,
+    chillMode,
 
     // Turn timer state
     turnTimeRemaining,
@@ -572,6 +591,7 @@ export function useOnlineGame(): UseOnlineGameReturn {
     joinRoom,
     leaveRoom,
     setReady,
+    setChillMode,
     addBot,
     startGame,
 
@@ -579,6 +599,7 @@ export function useOnlineGame(): UseOnlineGameReturn {
     revealTurnOrderCard,
     selectTopic,
     playCard,
+    stackCard,
     createSlot,
     submitTurn,
     vote,

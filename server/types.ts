@@ -31,6 +31,7 @@ export interface Room {
   createdAt: number;
   lastActivity: number;  // Timestamp of last player activity
   hostId: string;
+  chillMode: boolean;    // When true, no turn timers - take your time!
 }
 
 // Chat message
@@ -61,11 +62,13 @@ export type ClientMessage =
   | { type: 'LEAVE_ROOM' }
   | { type: 'LIST_ROOMS' }  // Request list of joinable rooms
   | { type: 'SET_READY'; ready: boolean }
+  | { type: 'SET_CHILL_MODE'; enabled: boolean }  // Host only - toggles turn timers
   | { type: 'ADD_BOT'; botName?: string }
   | { type: 'START_GAME' }
   | { type: 'REVEAL_TURN_ORDER_CARD' }  // Player reveals their turn order card
   | { type: 'SELECT_TOPIC'; topicId: string }  // Turn order winner selects topic
   | { type: 'PLAY_CARD'; cardId: string; slotId: string }
+  | { type: 'STACK_CARD'; cardId: string; slotId: string }  // Stack on occupied slot (any player)
   | { type: 'CREATE_SLOT'; cardId: string }
   | { type: 'SUBMIT_TURN'; spoken: string; translation: string }
   | { type: 'VOTE'; approved: boolean }
@@ -97,6 +100,7 @@ export type ServerMessage =
   | { type: 'PLAYER_JOINED'; player: RoomPlayer }
   | { type: 'PLAYER_LEFT'; playerId: string }
   | { type: 'PLAYER_READY'; playerId: string; ready: boolean }
+  | { type: 'CHILL_MODE_CHANGED'; enabled: boolean }  // Notifies all players of chill mode change
   | { type: 'GAME_STARTED'; game: import('../src/types/multiplayer.types').MultiplayerGame; yourPlayerId: string }
   | { type: 'GAME_STATE'; game: import('../src/types/multiplayer.types').MultiplayerGame }
   | { type: 'TURN_TIMER_UPDATE'; timeRemaining: number; playerId: string }  // Sent periodically
