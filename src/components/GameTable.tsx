@@ -382,8 +382,8 @@ function PlayerSeatCompact({
         {player.isHost && ' 👑'}
       </p>
 
-      {/* Cards count - tiny */}
-      <span className="text-[10px] text-gray-500">🃏 {player.cardsInHand}</span>
+      {/* Cards & Score - tiny */}
+      <span className="text-[10px] text-gray-500">🃏 {player.cardsInHand} ⭐ {player.score}</span>
     </div>
   );
 }

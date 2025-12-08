@@ -902,7 +902,7 @@ export default function RoomPage() {
                 name: p.name,
                 avatar: AVATARS[idx % AVATARS.length],
                 cardsInHand: p.hand.length,
-                score: 0,
+                score: p.score ?? 0,
                 isCurrentTurn: online.game!.currentPlayerIndex === idx,
                 isHost: idx === 0,
                 isSelf: p.id === online.playerId,
