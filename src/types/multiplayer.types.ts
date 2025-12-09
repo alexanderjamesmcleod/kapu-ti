@@ -15,9 +15,16 @@ export interface Player {
   hand: Card[];
   score: number;        // Player's accumulated score
   isActive: boolean;    // false = left game (emptied hand)
-  position: number;     // 0-3 for table position
+  position: number;     // 0-8 for table position (max 9 players)
   connectionStatus?: PlayerConnectionStatus;  // Online status
   consecutiveAutoSkips?: number;              // Track AFK behavior
+  sentenceStreak?: number;                    // Consecutive sentences completed
+}
+
+// Card played on the table with ownership info
+export interface PlayedCard {
+  card: Card;
+  playerId: string;     // Who played this card
 }
 
 // A slot on the table (stack of cards)
@@ -25,6 +32,7 @@ export interface TableSlot {
   id: string;
   color: string;
   cards: Card[];        // Stack - last card is current/top
+  cardOwners: string[]; // playerId for each card in the stack (parallel array)
   position: number;     // Position in sentence (0, 1, 2...)
 }
 
@@ -36,12 +44,13 @@ export type GamePhase =
   | 'topicSelect'       // Winner picks topic
   | 'playing'           // Active gameplay
   | 'verification'      // Checking pronunciation/translation
+  | 'discardSelect'     // Winner can optionally discard up to 2 cards
   | 'turnEnd'           // Between turns (privacy screen)
   | 'finished';         // Game over
 
 // State during a turn
 export interface TurnState {
-  playedCards: { card: Card; slotId: string }[];  // Cards played this turn
+  playedCards: { card: Card; slotId: string; playerId: string }[];  // Cards played this turn (with owner)
   colorsPlayedThisTurn: Set<string>;              // Track colors to enforce 1-per-color
   awaitingVerification: boolean;
   spokenSentence: string | null;

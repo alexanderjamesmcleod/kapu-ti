@@ -138,6 +138,8 @@ interface UseOnlineGameReturn {
   passTurn: () => void;
   undoLastCard: () => void;
   confirmTurnEnd: () => void;
+  discardCards: (cardIds: string[]) => void;  // Discard up to 2 cards after winning round
+  skipDiscard: () => void;  // Skip discard phase
 
   // Chat actions
   sendChat: (content: string) => void;
@@ -536,6 +538,14 @@ export function useOnlineGame(): UseOnlineGameReturn {
     send({ type: 'CONFIRM_TURN_END' });
   }, [send]);
 
+  const discardCards = useCallback((cardIds: string[]) => {
+    send({ type: 'DISCARD_CARDS', cardIds });
+  }, [send]);
+
+  const skipDiscard = useCallback(() => {
+    send({ type: 'SKIP_DISCARD' });
+  }, [send]);
+
   // Chat actions
   const sendChat = useCallback((content: string) => {
     if (content.trim()) {
@@ -603,6 +613,8 @@ export function useOnlineGame(): UseOnlineGameReturn {
     passTurn,
     undoLastCard,
     confirmTurnEnd,
+    discardCards,
+    skipDiscard,
 
     // Chat
     chatMessages,

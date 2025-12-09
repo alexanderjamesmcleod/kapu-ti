@@ -58,34 +58,32 @@
 
 ---
 
-## Current Sprint: Sentence Pattern Refactor
+## Current Sprint: Game Rules Implementation
 
-### Task 1: Document Sentence Patterns ✅ COMPLETE
+### Completed: Scoring & Game Flow Refactor (2025-12-09) ✅
+- [x] **Card ownership tracking** - Each card on table tracks who played it
+- [x] **Round-end scoring** - ALL players who contributed cards get 10 pts/card
+- [x] **Completion bonus** - Player who completes sentence gets 25 pts
+- [x] **Streak system** - +10 pts per consecutive completion (caps at 50 max)
+- [x] **Rejection flow** - Failed player gets 3 penalty cards, next player continues
+- [x] **Discard phase** - Winner can optionally discard up to 2 cards
+- [x] **Max 9 players** per table (was 10)
+- [x] Added `discardCards()` and `skipDiscard()` actions
+- [x] Updated types: `TableSlot.cardOwners`, `Player.sentenceStreak`
+- [x] New phase: `discardSelect` between verification and topicSelect
+
+### Next Up: Discard UI & Polish
+- [ ] Create discard selection UI component (select up to 2 cards)
+- [ ] Add confirmation dialog for discard
+- [ ] Show streak indicator on player seats
+- [ ] Test full game loop with new scoring
+
+### Previous: Sentence Pattern Refactor ✅ COMPLETE
 - [x] Define sentence pattern schema (`src/types/sentencePattern.types.ts`)
 - [x] Create pattern examples for each topic (8 patterns in `src/data/sentencePatterns.ts`)
 - [x] Document color-to-word-type mapping (11 word types with bidirectional mapping)
-
-### Task 2: Server-Side Pattern Generation
-- [ ] Modify `server/game-logic.ts` to generate pre-filled patterns
-- [ ] Create pattern generator based on topic
-- [ ] Remove `canCreateSlot` logic
-- [ ] Patterns include: slot colors, expected word types, target sentence
-
-### Task 3: Simplify MultiplayerSentenceBuilder
-- [ ] Remove "add new slot" button
-- [ ] Slots are read-only structure (just color targets)
-- [ ] Players can only place matching color cards
-- [ ] Show target sentence hint (optional/configurable)
-
-### Task 4: Fix Table Layout
-- [ ] Ensure table doesn't shrink with content
-- [ ] Remove scrollbar approach
-- [ ] Fixed 7-card max means predictable layout
-
-### Task 5: Card Generation per Topic
-- [ ] Generate hands that can complete the pattern
-- [ ] Include some "wrong" cards for challenge
-- [ ] Balance difficulty
+- [x] Server-side pattern generation based on topic
+- [x] Simplified MultiplayerSentenceBuilder (fixed slots from pattern)
 
 ---
 
@@ -167,3 +165,13 @@
 - **Vocabulary Classification**: 222 words classified, 47 grammar words added
 - All tasks completed and moved to kitchen/REVIEW/
 - Total new code: ~1000+ lines across multiple files
+
+### 2025-12-09 (Session 4 - Game Rules Implementation)
+- Implemented new scoring system: all card contributors get points
+- Added streak tracking for consecutive sentence completions
+- Fixed rejection flow: 3 penalty cards, next player continues (not table reset)
+- Added discard phase: winner can optionally discard up to 2 cards
+- Card ownership tracking: `TableSlot.cardOwners[]` array
+- New actions: `DISCARD_CARDS`, `SKIP_DISCARD`
+- Updated max players to 9
+- Files modified: scoring.ts, game-logic.ts, game-manager.ts, multiplayer.types.ts, useOnlineGame.ts, useMultiplayerGame.ts

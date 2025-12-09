@@ -17,6 +17,8 @@ import {
   passTurn,
   confirmTurnEnd,
   undoLastCard,
+  discardCards,
+  skipDiscard,
   sanitizeGameForPlayer,
   serializeGameForWire,
   revealTurnOrderCard,
@@ -27,7 +29,7 @@ import {
 const BOT_PREFIX = 'bot-';
 
 // Matchmaking constants
-const MAX_PLAYERS_PER_TABLE = 10;
+const MAX_PLAYERS_PER_TABLE = 9;
 const MIN_PLAYERS_TO_START = 2;
 
 // Turn timer constants
@@ -424,7 +426,7 @@ export class GameManager {
 
   /**
    * Auto-matchmaking: Find an available table or create a new one
-   * - If a table has room (< 10 players) and game in progress, add player mid-game
+   * - If a table has room (< 9 players) and game in progress, add player mid-game
    * - If a table has room and is waiting (< 2 players), add player and maybe start
    * - If no suitable table, create a new one
    */
@@ -831,6 +833,12 @@ export class GameManager {
       case 'UNDO':
         result = undoLastCard(room.game, playerId);
         break;
+      case 'DISCARD_CARDS':
+        result = discardCards(room.game, playerId, message.cardIds);
+        break;
+      case 'SKIP_DISCARD':
+        result = skipDiscard(room.game, playerId);
+        break;
       default:
         return null;
     }
@@ -1070,7 +1078,7 @@ export class GameManager {
   // Get list of public rooms for browsing (only rooms without active games that aren't full)
   getPublicRooms(): { code: string; playerCount: number; maxPlayers: number; hasGame: boolean; hostName: string }[] {
     const publicRooms: { code: string; playerCount: number; maxPlayers: number; hasGame: boolean; hostName: string }[] = [];
-    const MAX_PLAYERS = 6;
+    const MAX_PLAYERS = 9;
 
     for (const room of this.rooms.values()) {
       // Only show rooms that are joinable (not full, no game in progress)

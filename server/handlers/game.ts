@@ -121,6 +121,8 @@ export function handleGameAction(
     | { type: 'VOTE' }
     | { type: 'PASS_TURN' }
     | { type: 'UNDO' }
+    | { type: 'DISCARD_CARDS' }
+    | { type: 'SKIP_DISCARD' }
   >
 ): void {
   const result = ctx.gameManager.handleAction(ctx.socketId, message);

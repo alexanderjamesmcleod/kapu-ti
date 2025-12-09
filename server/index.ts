@@ -195,6 +195,8 @@ wss.on('connection', (ws: WebSocket) => {
         case 'VOTE':
         case 'PASS_TURN':
         case 'UNDO':
+        case 'DISCARD_CARDS':
+        case 'SKIP_DISCARD':
           handleGameAction(ctx, message);
           break;
         case 'CONFIRM_TURN_END':

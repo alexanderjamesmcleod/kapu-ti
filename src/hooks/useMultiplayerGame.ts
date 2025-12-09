@@ -47,6 +47,7 @@ function createInitialSlots(pattern: string[]): TableSlot[] {
     id: generateId(),
     color,
     cards: [],
+    cardOwners: [],
     position: index,
   }));
 }
@@ -142,9 +143,10 @@ export function useMultiplayerGame() {
       const newHand = newPlayers[playerIndex].hand.filter(c => c.id !== cardId);
       newPlayers[playerIndex] = { ...newPlayers[playerIndex], hand: newHand };
 
+      const playerId = prev.players[playerIndex].id;
       const newSlots = prev.tableSlots.map(s =>
         s.id === slotId
-          ? { ...s, cards: [...s.cards, card] }
+          ? { ...s, cards: [...s.cards, card], cardOwners: [...(s.cardOwners || []), playerId] }
           : s
       );
 
@@ -157,7 +159,7 @@ export function useMultiplayerGame() {
         tableSlots: newSlots,
         turnState: {
           ...prev.turnState,
-          playedCards: [...prev.turnState.playedCards, { card, slotId }],
+          playedCards: [...prev.turnState.playedCards, { card, slotId, playerId }],
           colorsPlayedThisTurn: newColorsPlayed,
         },
       };
@@ -185,10 +187,12 @@ export function useMultiplayerGame() {
       newPlayers[playerIndex] = { ...newPlayers[playerIndex], hand: newHand };
 
       // Create new slot at the end
+      const playerId = prev.players[playerIndex].id;
       const newSlot: TableSlot = {
         id: generateId(),
         color: card.color,
         cards: [card],
+        cardOwners: [playerId],
         position: prev.tableSlots.length,
       };
 
@@ -201,7 +205,7 @@ export function useMultiplayerGame() {
         tableSlots: [...prev.tableSlots, newSlot],
         turnState: {
           ...prev.turnState,
-          playedCards: [...prev.turnState.playedCards, { card, slotId: newSlot.id }],
+          playedCards: [...prev.turnState.playedCards, { card, slotId: newSlot.id, playerId }],
           colorsPlayedThisTurn: newColorsPlayed,
         },
       };
@@ -416,12 +420,14 @@ export function useMultiplayerGame() {
         hand: [...newPlayers[playerIndex].hand, card],
       };
 
-      // Remove card from slot
+      // Remove card from slot (and owner)
       let newSlots = prev.tableSlots.map(s => {
         if (s.id === slotId) {
           const newCards = [...s.cards];
+          const newOwners = [...(s.cardOwners || [])];
           newCards.pop();
-          return { ...s, cards: newCards };
+          newOwners.pop();
+          return { ...s, cards: newCards, cardOwners: newOwners };
         }
         return s;
       });

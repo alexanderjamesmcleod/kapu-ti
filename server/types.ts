@@ -75,6 +75,8 @@ export type ClientMessage =
   | { type: 'PASS_TURN' }
   | { type: 'UNDO' }
   | { type: 'CONFIRM_TURN_END' }
+  | { type: 'DISCARD_CARDS'; cardIds: string[] }  // Discard selected cards after winning round
+  | { type: 'SKIP_DISCARD' }  // Skip discard phase
   | { type: 'CHAT'; content: string }
   | { type: 'REACTION'; emoji: string }
   | { type: 'PING' }

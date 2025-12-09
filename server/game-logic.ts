@@ -28,7 +28,7 @@ import type { SentencePattern, PatternInstance, PatternSlotInstance } from '../s
 import { getRandomPattern, generatePatternInstance } from '../src/lib/patternHelpers';
 
 // Import scoring module
-import { calculateTurnScore } from './scoring';
+import { applyRoundScores } from './scoring';
 
 // Convert word to card
 function wordToCard(word: typeof ALL_WORDS[0]): Card {
@@ -72,6 +72,7 @@ function createInitialSlots(pattern: string[]): TableSlot[] {
     id: generateId(),
     color,
     cards: [],
+    cardOwners: [],
     position: index,
   }));
 }
@@ -82,6 +83,7 @@ function createSlotsFromPattern(patternInstance: PatternInstance): TableSlot[] {
     id: generateId(),
     color: slot.color,
     cards: [],
+    cardOwners: [],
     position: index,
   }));
 }
@@ -304,9 +306,14 @@ export function playCard(
   const newHand = player.hand.filter(c => c.id !== cardId);
   newPlayers[playerIndex] = { ...player, hand: newHand };
 
+  // Update slots with card AND owner tracking
   const newSlots = game.tableSlots.map(s =>
     s.id === slotId
-      ? { ...s, cards: [...s.cards, card] }
+      ? {
+          ...s,
+          cards: [...s.cards, card],
+          cardOwners: [...(s.cardOwners || []), playerId]
+        }
       : s
   );
 
@@ -319,7 +326,7 @@ export function playCard(
     tableSlots: newSlots,
     turnState: {
       ...game.turnState,
-      playedCards: [...game.turnState.playedCards, { card, slotId }],
+      playedCards: [...game.turnState.playedCards, { card, slotId, playerId }],
       colorsPlayedThisTurn: newColorsPlayed,
     },
   };
@@ -366,14 +373,18 @@ export function stackCard(
     return { success: false, game, error: 'Card color does not match slot' };
   }
 
-  // Update game state - remove card from player's hand, add to slot
+  // Update game state - remove card from player's hand, add to slot with ownership
   const newPlayers = [...game.players];
   const newHand = player.hand.filter(c => c.id !== cardId);
   newPlayers[playerIndex] = { ...player, hand: newHand };
 
   const newSlots = game.tableSlots.map(s =>
     s.id === slotId
-      ? { ...s, cards: [...s.cards, card] }
+      ? {
+          ...s,
+          cards: [...s.cards, card],
+          cardOwners: [...(s.cardOwners || []), playerId]
+        }
       : s
   );
 
@@ -420,11 +431,12 @@ export function createSlot(
   const newHand = player.hand.filter(c => c.id !== cardId);
   newPlayers[playerIndex] = { ...player, hand: newHand };
 
-  // Create new slot at the end
+  // Create new slot at the end with ownership tracking
   const newSlot: TableSlot = {
     id: generateId(),
     color: card.color,
     cards: [card],
+    cardOwners: [playerId],
     position: game.tableSlots.length,
   };
 
@@ -437,7 +449,7 @@ export function createSlot(
     tableSlots: [...game.tableSlots, newSlot],
     turnState: {
       ...game.turnState,
-      playedCards: [...game.turnState.playedCards, { card, slotId: newSlot.id }],
+      playedCards: [...game.turnState.playedCards, { card, slotId: newSlot.id, playerId }],
       colorsPlayedThisTurn: newColorsPlayed,
     },
   };
@@ -473,21 +485,24 @@ export function submitTurn(
 }
 
 // Handle successful turn (Kōrero approved!)
-// Winner can discard up to 3 cards, picks topic for next round, and goes first
+// All players who contributed cards get points
+// Winner gets completion bonus + can optionally discard 2 cards + picks topic
 function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
   const currentPlayerIdx = game.currentPlayerIndex;
-  const player = game.players[currentPlayerIdx];
+  const completerId = game.players[currentPlayerIdx].id;
 
-  // Calculate score for this turn
-  const turnScore = calculateTurnScore(game.turnState.playedCards, game.currentTopic);
-  const updatedScore = player.score + turnScore;
+  // Apply round scores to ALL players who contributed
+  // This handles card points, completion bonus, and streak tracking
+  const scoredPlayers = applyRoundScores(game.players, game.tableSlots, completerId);
 
-  // Check if player emptied their hand
+  const player = scoredPlayers[currentPlayerIdx];
+
+  // Check if completer emptied their hand
   if (player.hand.length === 0) {
-    const newPlayers = [...game.players];
-    newPlayers[currentPlayerIdx] = { ...player, score: updatedScore, isActive: false };
-
     const newWinners = [...game.winnersInOrder, player.id];
+    const newPlayers = scoredPlayers.map((p, idx) =>
+      idx === currentPlayerIdx ? { ...p, isActive: false } : p
+    );
 
     // Check if game is over (only 1 active player left)
     const remainingActive = newPlayers.filter(p => p.isActive);
@@ -503,93 +518,59 @@ function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
       };
     }
 
-    // Move to next active player
+    // Move to next active player for topic selection
     return {
       ...game,
       players: newPlayers,
       winnersInOrder: newWinners,
       currentPlayerIndex: findNextActivePlayer(newPlayers, currentPlayerIdx),
-      phase: 'turnEnd',
+      turnOrderWinner: findNextActivePlayer(newPlayers, currentPlayerIdx),
+      phase: 'topicSelect',
       turnState: createInitialTurnState(),
+      verificationVotes: [],
+      currentTopic: undefined,
+      currentPattern: undefined,
     };
   }
 
-  // Kōrero approved! Discard up to 3 cards and go to topic selection
-  // For now, we auto-discard the first 3 cards (can add UI later)
-  const cardsToDiscard = Math.min(3, player.hand.length);
-  const discardedCards = player.hand.slice(0, cardsToDiscard);
-  const remainingHand = player.hand.slice(cardsToDiscard);
-
-  const newPlayers = [...game.players];
-  newPlayers[currentPlayerIdx] = {
-    ...player,
-    score: updatedScore,
-    hand: remainingHand,
-  };
-
-  // Check if player now emptied their hand after discard
-  if (remainingHand.length === 0) {
-    newPlayers[currentPlayerIdx] = { ...newPlayers[currentPlayerIdx], isActive: false };
-
-    const newWinners = [...game.winnersInOrder, player.id];
-    const remainingActive = newPlayers.filter(p => p.isActive);
-
-    if (remainingActive.length === 1) {
-      return {
-        ...game,
-        players: newPlayers,
-        discardPile: [...game.discardPile, ...discardedCards],
-        winnersInOrder: newWinners,
-        loserId: remainingActive[0].id,
-        phase: 'finished',
-        turnState: createInitialTurnState(),
-      };
-    }
-  }
-
-  // Winner picks topic for next round (goes to topicSelect phase)
-  // Set turnOrderWinner to current player so they get to select topic
+  // Go to discard selection phase - winner can optionally discard up to 2 cards
+  // Set turnOrderWinner to current player so they get to select topic after discard
   return {
     ...game,
-    players: newPlayers,
-    discardPile: [...game.discardPile, ...discardedCards],
-    // Keep currentPlayerIndex - winner goes first after topic selection
+    players: scoredPlayers,
     turnOrderWinner: currentPlayerIdx,
-    phase: 'topicSelect',
+    phase: 'discardSelect',
     turnState: createInitialTurnState(),
     verificationVotes: [],
-    // Clear current topic and pattern so new ones can be selected
-    currentTopic: undefined,
-    currentPattern: undefined,
   };
 }
 
-// Handle failed verification (pickup all cards!)
+// Handle failed verification (3 penalty cards, next player continues)
 function handleTurnFailure(game: MultiplayerGame): MultiplayerGame {
   const currentPlayerIdx = game.currentPlayerIndex;
   const player = game.players[currentPlayerIdx];
 
-  // Collect ALL cards from table
-  const tableCards = game.tableSlots.flatMap(slot => slot.cards);
+  // Draw 3 penalty cards from draw pile
+  const penaltyCardCount = 3;
+  const newDrawPile = [...game.drawPile];
+  const penaltyCards = newDrawPile.splice(0, Math.min(penaltyCardCount, newDrawPile.length));
 
-  // Add to player's hand
+  // Add penalty cards to failed player's hand
   const newPlayers = [...game.players];
   newPlayers[currentPlayerIdx] = {
     ...player,
-    hand: [...player.hand, ...tableCards],
+    hand: [...player.hand, ...penaltyCards],
+    sentenceStreak: 0, // Reset streak on failure
   };
 
-  // Reset table slots - use pattern if available, otherwise fall back to startingPattern
-  const newSlots = game.currentPattern
-    ? createSlotsFromPattern(game.currentPattern)
-    : createInitialSlots(game.startingPattern);
-
+  // Move to next player - they continue the round (don't reset table)
+  // The sentence stays as-is, next player can try to complete it or pass
   return {
     ...game,
     players: newPlayers,
-    tableSlots: newSlots,
-    currentPlayerIndex: findNextActivePlayer(game.players, currentPlayerIdx),
-    phase: 'turnEnd',
+    drawPile: newDrawPile,
+    currentPlayerIndex: findNextActivePlayer(newPlayers, currentPlayerIdx),
+    phase: 'playing', // Continue playing, don't go to turnEnd
     turnState: createInitialTurnState(),
     verificationVotes: [],
   };
@@ -701,12 +682,14 @@ export function undoLastCard(
     hand: [...newPlayers[playerIndex].hand, card],
   };
 
-  // Remove card from slot
+  // Remove card from slot (and its owner)
   let newSlots = game.tableSlots.map(s => {
     if (s.id === slotId) {
       const newCards = [...s.cards];
+      const newOwners = [...(s.cardOwners || [])];
       newCards.pop();
-      return { ...s, cards: newCards };
+      newOwners.pop();
+      return { ...s, cards: newCards, cardOwners: newOwners };
     }
     return s;
   });
@@ -732,6 +715,118 @@ export function undoLastCard(
   };
 
   return { success: true, game: newGame };
+}
+
+// Discard selected cards (during discardSelect phase)
+// Winner can optionally discard up to 2 cards
+export function discardCards(
+  game: MultiplayerGame,
+  playerId: string,
+  cardIds: string[]
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  if (game.phase !== 'discardSelect') {
+    return { success: false, game, error: 'Not in discard selection phase' };
+  }
+
+  // Only the round winner can discard
+  const winnerIndex = game.turnOrderWinner ?? game.currentPlayerIndex;
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+
+  if (playerIndex === -1 || playerIndex !== winnerIndex) {
+    return { success: false, game, error: 'Only the round winner can discard' };
+  }
+
+  // Max 2 cards
+  if (cardIds.length > 2) {
+    return { success: false, game, error: 'Can only discard up to 2 cards' };
+  }
+
+  const player = game.players[playerIndex];
+  const cardsToDiscard: Card[] = [];
+  const remainingHand: Card[] = [];
+
+  for (const card of player.hand) {
+    if (cardIds.includes(card.id)) {
+      cardsToDiscard.push(card);
+    } else {
+      remainingHand.push(card);
+    }
+  }
+
+  // Verify all requested cards were found
+  if (cardsToDiscard.length !== cardIds.length) {
+    return { success: false, game, error: 'Some cards not found in hand' };
+  }
+
+  const newPlayers = [...game.players];
+  newPlayers[playerIndex] = {
+    ...player,
+    hand: remainingHand,
+  };
+
+  // Check if player emptied their hand after discard
+  if (remainingHand.length === 0) {
+    newPlayers[playerIndex] = { ...newPlayers[playerIndex], isActive: false };
+
+    const newWinners = [...game.winnersInOrder, player.id];
+    const remainingActive = newPlayers.filter(p => p.isActive);
+
+    if (remainingActive.length === 1) {
+      return {
+        success: true,
+        game: {
+          ...game,
+          players: newPlayers,
+          discardPile: [...game.discardPile, ...cardsToDiscard],
+          winnersInOrder: newWinners,
+          loserId: remainingActive[0].id,
+          phase: 'finished',
+        },
+      };
+    }
+  }
+
+  // Move to topic selection for new round
+  return {
+    success: true,
+    game: {
+      ...game,
+      players: newPlayers,
+      discardPile: [...game.discardPile, ...cardsToDiscard],
+      phase: 'topicSelect',
+      currentTopic: undefined,
+      currentPattern: undefined,
+    },
+  };
+}
+
+// Skip discard (player chooses not to discard any cards)
+export function skipDiscard(
+  game: MultiplayerGame,
+  playerId: string
+): { success: boolean; game: MultiplayerGame; error?: string } {
+  if (game.phase !== 'discardSelect') {
+    return { success: false, game, error: 'Not in discard selection phase' };
+  }
+
+  // Only the round winner can skip
+  const winnerIndex = game.turnOrderWinner ?? game.currentPlayerIndex;
+  const playerIndex = game.players.findIndex(p => p.id === playerId);
+
+  if (playerIndex === -1 || playerIndex !== winnerIndex) {
+    return { success: false, game, error: 'Only the round winner can skip discard' };
+  }
+
+  // Move to topic selection for new round
+  return {
+    success: true,
+    game: {
+      ...game,
+      phase: 'topicSelect',
+      currentTopic: undefined,
+      currentPattern: undefined,
+    },
+  };
 }
 
 // Sanitize game state for a specific player (hide other players' hands)
