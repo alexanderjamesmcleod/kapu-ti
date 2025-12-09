@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, SoundToggle, MobileGameView, DiscardSelect } from '@/components';
+import { GameTableV2, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, SoundToggle, MobileGameView, DiscardSelect } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
 import VoiceControls from '@/components/VoiceControls';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { getSentenceFromSlots } from '@/types/multiplayer.types';
-import type { TablePlayer } from '@/components/GameTable';
+import type { TablePlayer } from '@/components/GameTableV2';
 import type { Card as CardType } from '@/types';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
@@ -717,7 +717,7 @@ export default function RoomPage() {
             </div>
 
             {/* Game Table (spectator view) */}
-            <GameTable
+            <GameTableV2
               players={DEMO_PLAYERS}
               maxPlayers={6}
               centerContent={spectatorCenterContent}
@@ -735,7 +735,7 @@ export default function RoomPage() {
 
         {/* Playing View */}
         {phase === 'playing' && online.game && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto scrollbar-stable">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
             {/* Connection warning */}
             {online.connectionState !== 'connected' && (
               <div className="mb-4 px-4 py-2 bg-amber-500/30 text-amber-300 rounded-lg text-sm flex items-center justify-between">
@@ -891,7 +891,7 @@ export default function RoomPage() {
                   </div>
                 </div>
 
-                <GameTable
+                <GameTableV2
               players={online.game.players.map((p, idx) => ({
                 id: p.id,
                 name: p.name,

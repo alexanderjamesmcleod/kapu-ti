@@ -5,6 +5,7 @@ export { MultiplayerSentenceBuilder } from './MultiplayerSentenceBuilder';
 export { TopicSelector } from './TopicSelector';
 export { NumberCard } from './NumberCard';
 export { GameTable } from './GameTable';
+export { GameTableV2 } from './GameTableV2';
 export { ChatPanel } from './ChatPanel';
 export { VoiceControls } from './VoiceControls';
 export { ConnectionStatusBadge } from './ConnectionStatusBadge';
