@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, SoundToggle, MobileGameView } from '@/components';
+import { GameTable, CardHand, MultiplayerSentenceBuilder, KoreroButton, VotingOverlay, SoundToggle, MobileGameView, DiscardSelect } from '@/components';
 import ChatPanel from '@/components/ChatPanel';
 import VoiceControls from '@/components/VoiceControls';
 import { useGameSounds } from '@/hooks/useGameSounds';
@@ -735,7 +735,7 @@ export default function RoomPage() {
 
         {/* Playing View */}
         {phase === 'playing' && online.game && (
-          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+          <div className="flex-1 flex flex-col min-h-0 overflow-y-auto scrollbar-stable">
             {/* Connection warning */}
             {online.connectionState !== 'connected' && (
               <div className="mb-4 px-4 py-2 bg-amber-500/30 text-amber-300 rounded-lg text-sm flex items-center justify-between">
@@ -901,7 +901,8 @@ export default function RoomPage() {
                 isCurrentTurn: online.game!.currentPlayerIndex === idx,
                 isHost: idx === 0,
                 isSelf: p.id === online.playerId,
-                status: p.isActive ? 'playing' as const : 'waiting' as const
+                status: p.isActive ? 'playing' as const : 'waiting' as const,
+                sentenceStreak: p.sentenceStreak ?? 0
               }))}
               maxPlayers={settings.maxPlayers}
               centerContent={
@@ -932,7 +933,7 @@ export default function RoomPage() {
             />
 
             {/* Hand - positioned below the table, always visible with sticky positioning */}
-            <div className="mt-3 bg-white/95 rounded-xl shadow-lg p-3 relative z-10 flex-shrink-0 mb-20">
+            <div className="mt-3 bg-white/95 rounded-xl shadow-lg p-3 relative z-10 flex-shrink-0 mb-20 w-full">
               {/* Hand header with actions */}
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-gray-700">
@@ -1010,6 +1011,44 @@ export default function RoomPage() {
                 isCurrentPlayer={online.isMyTurn}
                 onVote={(approved) => online.vote(approved)}
               />
+            )}
+
+            {/* Discard Select Phase - Winner can discard up to 2 cards */}
+            {online.game.phase === 'discardSelect' && online.currentPlayer && (
+              (() => {
+                const winnerIndex = online.game!.turnOrderWinner ?? online.game!.currentPlayerIndex;
+                const isWinner = online.game!.players[winnerIndex]?.id === online.playerId;
+
+                if (isWinner) {
+                  return (
+                    <DiscardSelect
+                      hand={online.currentPlayer!.hand}
+                      onDiscard={(cardIds) => online.discardCards(cardIds)}
+                      onSkip={() => online.skipDiscard()}
+                      playerName={online.currentPlayer!.name}
+                    />
+                  );
+                } else {
+                  // Show waiting message for other players
+                  const winnerName = online.game!.players[winnerIndex]?.name || 'Winner';
+                  return (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+                      <div className="bg-gray-800 rounded-xl p-6 text-center max-w-md mx-4">
+                        <div className="text-4xl mb-3">🎉</div>
+                        <h2 className="text-xl font-bold text-white mb-2">
+                          {winnerName} completed the sentence!
+                        </h2>
+                        <p className="text-gray-300">
+                          Waiting for them to choose cards to discard...
+                        </p>
+                        <div className="mt-4 flex justify-center">
+                          <div className="animate-spin w-6 h-6 border-2 border-teal-400 border-t-transparent rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              })()
             )}
 
             {/* Floating Voice + Chat Controls - DESKTOP only (mobile uses integrated buttons) */}

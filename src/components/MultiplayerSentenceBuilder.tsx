@@ -101,12 +101,12 @@ export function MultiplayerSentenceBuilder({
         </div>
       )}
 
-      {/* Current sentence display */}
-      {currentSentence && (
-        <div className="px-4 py-2 bg-white/90 rounded-lg shadow-md">
-          <p className="text-lg font-bold text-gray-800">{currentSentence}</p>
-        </div>
-      )}
+      {/* Current sentence display - always reserve space to prevent layout shift */}
+      <div className="px-4 py-2 bg-white/90 rounded-lg shadow-md min-h-[40px] min-w-[120px] flex items-center justify-center">
+        <p className="text-lg font-bold text-gray-800">
+          {currentSentence || <span className="text-gray-400 text-sm">Build your sentence...</span>}
+        </p>
+      </div>
 
       {/* Slots - max 7 cards, sized to fit */}
       <div className="flex flex-wrap justify-center gap-1.5">

@@ -61,6 +61,17 @@ export class GameManager {
   private onTopicTimeout?: (roomCode: string) => void;
 
   /**
+   * Reset all rooms (for development/testing)
+   */
+  resetAllRooms(): void {
+    console.log(`[Reset] Clearing all ${this.rooms.size} rooms`);
+    this.rooms.clear();
+    this.playerToRoom.clear();
+    this.socketToPlayer.clear();
+    this.disconnectedPlayers.clear();
+  }
+
+  /**
    * Set callbacks for turn timer events
    */
   setTurnTimerCallbacks(

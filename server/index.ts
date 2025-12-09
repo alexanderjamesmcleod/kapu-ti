@@ -230,6 +230,13 @@ wss.on('connection', (ws: WebSocket) => {
           send(ws, { type: 'PONG' });
           break;
 
+        // Dev/Admin - Reset all rooms
+        case 'RESET_SERVER':
+          console.log(`[Admin] Server reset requested by ${socketId}`);
+          gameManager.resetAllRooms();
+          send(ws, { type: 'SERVER_RESET' });
+          break;
+
         default:
           console.log(`[${socketId}] Unknown message type:`, (message as { type: string }).type);
           break;

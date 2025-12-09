@@ -84,7 +84,9 @@ export type ClientMessage =
   | { type: 'VOICE_JOIN' }
   | { type: 'VOICE_LEAVE' }
   | { type: 'VOICE_SIGNAL'; toPlayerId: string; signal: unknown }
-  | { type: 'VOICE_MUTE'; isMuted: boolean };
+  | { type: 'VOICE_MUTE'; isMuted: boolean }
+  // Admin/Dev
+  | { type: 'RESET_SERVER' };
 
 // Voice signaling data (WebRTC)
 export interface VoiceSignal {
@@ -116,4 +118,6 @@ export type ServerMessage =
   | { type: 'VOICE_SIGNAL'; fromPlayerId: string; signal: unknown }
   | { type: 'VOICE_PEER_JOINED'; playerId: string; playerName: string }
   | { type: 'VOICE_PEER_LEFT'; playerId: string }
-  | { type: 'VOICE_MUTE_CHANGED'; playerId: string; isMuted: boolean };
+  | { type: 'VOICE_MUTE_CHANGED'; playerId: string; isMuted: boolean }
+  // Admin/Dev
+  | { type: 'SERVER_RESET' };

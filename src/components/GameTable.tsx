@@ -16,6 +16,7 @@ export interface TablePlayer {
   isHost?: boolean;
   isSelf?: boolean;
   status: 'waiting' | 'ready' | 'playing' | 'disconnected';
+  sentenceStreak?: number;   // Consecutive sentences completed
 }
 
 interface GameTableProps {
@@ -206,9 +207,9 @@ export function GameTable({
   const emptySeats = Math.max(0, maxPlayers - filledSeats);
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto">
-      {/* Oval table container - includes player positions */}
-      <div className="relative" style={{ paddingTop: '55%' }}> {/* Fixed aspect ratio for oval */}
+    <div className="relative w-full max-w-4xl min-w-[320px] mx-auto flex-shrink-0">
+      {/* Oval table container - fixed height to prevent shrinking */}
+      <div className="relative h-[350px] sm:h-[400px] md:h-[450px]">
         {/* Oval table surface */}
         <div
           className="absolute inset-[8%] rounded-[50%] bg-gradient-to-br from-teal-700 to-teal-900
@@ -237,8 +238,8 @@ export function GameTable({
               }}
             />
 
-            {/* Center content area */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 overflow-hidden">
+            {/* Center content area - min dimensions prevent layout shift */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-4 overflow-hidden min-h-[200px]">
               {/* Topic indicator */}
               {currentTopic && (
                 <div className="mb-2 flex-shrink-0">
@@ -251,7 +252,7 @@ export function GameTable({
               )}
 
               {/* Sentence builder area - fixed layout for max 7 cards */}
-              <div className="bg-black/20 rounded-2xl p-3 backdrop-blur-sm w-full max-w-[95%]">
+              <div className="bg-black/20 rounded-2xl p-3 backdrop-blur-sm w-full max-w-[95%] min-h-[160px]">
                 {centerContent || (
                   <p className="text-white/60 text-center text-sm">
                     Waiting for game to start...
@@ -382,8 +383,16 @@ function PlayerSeatCompact({
         {player.isHost && ' 👑'}
       </p>
 
-      {/* Cards & Score - tiny */}
-      <span className="text-[10px] text-gray-500">🃏 {player.cardsInHand} ⭐ {player.score}</span>
+      {/* Cards, Score & Streak - tiny */}
+      <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+        <span>🃏 {player.cardsInHand}</span>
+        <span>⭐ {player.score}</span>
+        {player.sentenceStreak && player.sentenceStreak > 0 && (
+          <span className="text-amber-400" title={`${player.sentenceStreak} streak`}>
+            {'🔥'.repeat(Math.min(player.sentenceStreak, 5))}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

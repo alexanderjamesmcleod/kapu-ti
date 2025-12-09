@@ -535,6 +535,7 @@ function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
 
   // Go to discard selection phase - winner can optionally discard up to 2 cards
   // Set turnOrderWinner to current player so they get to select topic after discard
+  // Reset turnStartedAt to prevent stale timer from auto-selecting topic
   return {
     ...game,
     players: scoredPlayers,
@@ -542,6 +543,7 @@ function handleTurnSuccess(game: MultiplayerGame): MultiplayerGame {
     phase: 'discardSelect',
     turnState: createInitialTurnState(),
     verificationVotes: [],
+    turnStartedAt: Date.now(), // Reset timer for discard phase
   };
 }
 
@@ -787,6 +789,7 @@ export function discardCards(
   }
 
   // Move to topic selection for new round
+  // Reset turnStartedAt so topic timer starts fresh
   return {
     success: true,
     game: {
@@ -796,6 +799,7 @@ export function discardCards(
       phase: 'topicSelect',
       currentTopic: undefined,
       currentPattern: undefined,
+      turnStartedAt: Date.now(), // Fresh timer for topic selection
     },
   };
 }
@@ -818,6 +822,7 @@ export function skipDiscard(
   }
 
   // Move to topic selection for new round
+  // Reset turnStartedAt so topic timer starts fresh
   return {
     success: true,
     game: {
@@ -825,6 +830,7 @@ export function skipDiscard(
       phase: 'topicSelect',
       currentTopic: undefined,
       currentPattern: undefined,
+      turnStartedAt: Date.now(), // Fresh timer for topic selection
     },
   };
 }

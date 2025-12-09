@@ -16,3 +16,4 @@ export { ServiceWorkerRegistration } from './ServiceWorkerRegistration';
 export { MobileGameView } from './MobileGameView';
 export { Leaderboard } from './Leaderboard';
 export { HighScoreModal } from './HighScoreModal';
+export { DiscardSelect } from './DiscardSelect';

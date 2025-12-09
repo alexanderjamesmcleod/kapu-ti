@@ -68,6 +68,19 @@ body {
   overflow: hidden;
 }
 
+/* Hidden scrollbar but still scrollable - prevents width jitter */
+.scrollbar-stable {
+  scrollbar-gutter: stable;
+}
+
+.scrollbar-hidden {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
+
 /* Landscape orientation adjustments */
 @media (orientation: landscape) and (max-height: 500px) {
   .game-viewport {

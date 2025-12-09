@@ -92,7 +92,7 @@ export function CardHand({
               ))}
             </div>
           ) : (
-            <div className="flex flex-wrap gap-2 justify-center">
+            <div className="flex flex-wrap gap-2 justify-center w-full">
               {cards.map((card) => (
                 <Card
                   key={card.id}
