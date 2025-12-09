@@ -2,7 +2,7 @@
 
 **Project:** Te Reo Māori Card Game
 **Status:** Active Development
-**Last Updated:** 2025-12-09
+**Last Updated:** 2025-12-10
 
 ---
 
@@ -71,6 +71,16 @@
 - [x] Added `discardCards()` and `skipDiscard()` actions
 - [x] Updated types: `TableSlot.cardOwners`, `Player.sentenceStreak`
 - [x] New phase: `discardSelect` between verification and topicSelect
+
+### Completed: Desktop UI Polish (2025-12-10) ✅
+- [x] **Responsive table height** - `min(400px, 50vh)` for different screens
+- [x] **Better slot spacing** - Increased gap in sentence builder
+- [x] **Larger avatars** - w-14 h-14 with dark background for contrast
+- [x] **Dark theme hand section** - Matches overall game aesthetic
+- [x] **Decluttered table** - Removed duplicate text displays
+- [x] **Topic badge repositioned** - Now above table, not covering players
+- [x] **Turn indicator moved** - Now in hand header, not on table
+- [x] **Kōrero modal z-index fix** - Portal renders to body, no more avatar overlap
 
 ### Next Up: Discard UI & Polish
 - [ ] Create discard selection UI component (select up to 2 cards)
@@ -175,3 +185,14 @@
 - New actions: `DISCARD_CARDS`, `SKIP_DISCARD`
 - Updated max players to 9
 - Files modified: scoring.ts, game-logic.ts, game-manager.ts, multiplayer.types.ts, useOnlineGame.ts, useMultiplayerGame.ts
+
+### 2025-12-10 (Session 5 - UI Polish)
+- **Table height**: Made responsive with `min(400px, 50vh)`
+- **Slot spacing**: Increased gap from 1.5 to 3 in sentence builder
+- **Player avatars**: Enlarged to w-14 h-14 with darker background for contrast
+- **Hand section**: Dark themed (bg-slate-800) to match game aesthetic
+- **Decluttered table center**: Removed duplicate sentence text, "played this turn" indicator
+- **Topic badge**: Moved above table (was covering top player avatar)
+- **Turn indicator**: Moved from table to hand header next to "Your Hand"
+- **Kōrero modal fix**: Used React Portal to escape stacking context (avatar was overlaying modal)
+- Files modified: GameTableV2.tsx, MultiplayerSentenceBuilder.tsx, room/page.tsx, KoreroButton.tsx

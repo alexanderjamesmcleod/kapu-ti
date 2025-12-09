@@ -72,10 +72,10 @@ function PlayerSeatCompact({
       player.isCurrentTurn ? 'scale-110' : ''
     }`}>
       <div className={`
-        relative w-12 h-12 rounded-full overflow-hidden
-        border-3 ${player.isCurrentTurn ? 'border-amber-400 shadow-lg shadow-amber-400/50' : 'border-gray-600'}
+        relative w-14 h-14 rounded-full overflow-hidden
+        border-3 ${player.isCurrentTurn ? 'border-amber-400 shadow-lg shadow-amber-400/50' : 'border-gray-500'}
         ${player.isSelf ? 'border-teal-400' : ''}
-        bg-gradient-to-br from-teal-100 to-blue-100
+        bg-gradient-to-br from-slate-700 to-slate-800
       `}>
         {player.isVideoEnabled && player.videoStream ? (
           <video
@@ -141,10 +141,24 @@ export function GameTableV2({
 
   return (
     <>
+      {/* Topic indicator - ABOVE the table */}
+      {currentTopic && (
+        <div className="flex justify-center mb-2">
+          <div className="px-3 py-1.5 bg-slate-800/90 rounded-full shadow-lg text-sm border border-slate-700">
+            <span className="text-lg">{currentTopic.icon}</span>
+            <span className="ml-2 font-bold text-teal-400">{currentTopic.name}</span>
+            <span className="ml-2 text-xs text-teal-300">({currentTopic.maori})</span>
+          </div>
+        </div>
+      )}
+
       {/* MAIN CONTAINER: Fixed dimensions prevent layout recalculation */}
       <div 
-        className="relative h-[400px] mx-auto flex-shrink-0"
-        style={{ width: 'min(900px, calc(100vw - 32px))' }}
+        className="relative mx-auto flex-shrink-0"
+        style={{ 
+          width: 'min(900px, calc(100vw - 32px))',
+          height: 'min(400px, 50vh)'
+        }}
       >
 
         {/* LAYER 1: Oval Background (z-0) - pure decoration */}
@@ -179,33 +193,15 @@ export function GameTableV2({
           </div>
         </div>
 
-        {/* LAYER 2: Content Grid (z-10) - fixed row heights */}
-        <div className="absolute inset-0 z-10 grid grid-rows-[40px_1fr_40px] p-8">
-          {/* Row 1: Topic indicator */}
-          <div className="flex items-center justify-center">
-            {currentTopic && (
-              <div className="px-3 py-1.5 bg-white/95 rounded-full shadow-lg text-sm">
-                <span className="text-lg">{currentTopic.icon}</span>
-                <span className="ml-2 font-bold text-teal-800">{currentTopic.name}</span>
-                <span className="ml-2 text-xs text-teal-600">({currentTopic.maori})</span>
-              </div>
+        {/* LAYER 2: Content Grid (z-10) */}
+        <div className="absolute inset-0 z-10 flex items-center justify-center p-8">
+          {/* Sentence builder (centerContent) */}
+          <div className="bg-black/20 rounded-2xl p-3 backdrop-blur-sm w-full max-w-[95%]">
+            {centerContent || (
+              <p className="text-white/60 text-center text-sm">
+                Waiting for game to start...
+              </p>
             )}
-          </div>
-
-          {/* Row 2: Sentence builder (centerContent) */}
-          <div className="flex items-center justify-center overflow-hidden">
-            <div className="bg-black/20 rounded-2xl p-3 backdrop-blur-sm w-full max-w-[95%]">
-              {centerContent || (
-                <p className="text-white/60 text-center text-sm">
-                  Waiting for game to start...
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Row 3: Empty spacer */}
-          <div className="flex items-center justify-center">
-            {/* Reserved for turn indicator */}
           </div>
         </div>
 

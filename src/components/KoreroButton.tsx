@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface KoreroButtonProps {
   disabled?: boolean;
@@ -15,6 +16,11 @@ interface KoreroButtonProps {
 export default function KoreroButton({ disabled, sentence, onKorero }: KoreroButtonProps) {
   const [showModal, setShowModal] = useState(false);
   const [translation, setTranslation] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleClick = () => {
     if (disabled) return;
@@ -52,10 +58,10 @@ export default function KoreroButton({ disabled, sentence, onKorero }: KoreroBut
         Kōrero!
       </button>
 
-      {/* Translation Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+      {/* Translation Modal - rendered via portal to escape stacking contexts */}
+      {showModal && mounted && createPortal(
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl relative z-[101]">
             <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
               Kōrero!
             </h2>
@@ -124,7 +130,8 @@ export default function KoreroButton({ disabled, sentence, onKorero }: KoreroBut
               Other players will vote on your pronunciation & translation!
             </p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -872,7 +872,7 @@ export default function RoomPage() {
                   /* DESKTOP VIEW */
                   <>
                 {/* Turn indicator with timer */}
-                <div className="mb-2 flex items-center justify-between text-xs flex-shrink-0">
+                <div className="mb-3 flex items-center justify-between text-xs flex-shrink-0">
                   <span className="text-teal-400">{online.game.phase}</span>
                   <div className="flex items-center gap-2">
                     <span className={online.isMyTurn ? 'text-amber-400 font-bold' : 'text-gray-500'}>
@@ -933,12 +933,20 @@ export default function RoomPage() {
             />
 
             {/* Hand - positioned below the table, always visible with sticky positioning */}
-            <div className="mt-3 bg-white/95 rounded-xl shadow-lg p-3 relative z-10 flex-shrink-0 mb-20 w-full">
+            <div className="mt-4 bg-slate-800/95 rounded-xl shadow-lg p-3 relative z-10 flex-shrink-0 mb-20 w-full border border-slate-700">
               {/* Hand header with actions */}
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-gray-700">
-                  Your Hand ({online.currentPlayer?.hand.length || 0})
-                </h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="font-bold text-gray-200">
+                    Your Hand ({online.currentPlayer?.hand.length || 0})
+                  </h3>
+                  {/* Turn indicator moved here */}
+                  {online.isMyTurn && (
+                    <span className="text-amber-400 font-semibold animate-pulse text-sm">
+                      {selectedCard ? `Tap a slot to place "${selectedCard.maori}"` : 'Select a card'}
+                    </span>
+                  )}
+                </div>
                 {online.isMyTurn && (online.game.phase === 'playing' || online.game.phase === 'turnEnd') && (
                   <div className="flex gap-2 items-center">
                     {online.game.turnState.playedCards.length > 0 && (
@@ -985,9 +993,9 @@ export default function RoomPage() {
 
               {/* Not your turn indicator - show stack hint when not your turn */}
               {!online.isMyTurn && (
-                <div className="mt-2 text-center text-gray-500 text-sm">
+                <div className="mt-2 text-center text-gray-400 text-sm">
                   {selectedCard ? (
-                    <span className="text-teal-500">Tap a matching color slot to stack your card</span>
+                    <span className="text-teal-400">Tap a matching color slot to stack your card</span>
                   ) : (
                     <>Waiting for {online.game.players[online.game.currentPlayerIndex]?.name}... <span className="text-teal-400 text-xs">(select a card to stack)</span></>
                   )}

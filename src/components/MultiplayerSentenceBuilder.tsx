@@ -101,15 +101,8 @@ export function MultiplayerSentenceBuilder({
         </div>
       )}
 
-      {/* Current sentence display - always reserve space to prevent layout shift */}
-      <div className="px-4 py-2 bg-white/90 rounded-lg shadow-md min-h-[40px] min-w-[120px] flex items-center justify-center">
-        <p className="text-lg font-bold text-gray-800">
-          {currentSentence || <span className="text-gray-400 text-sm">Build your sentence...</span>}
-        </p>
-      </div>
-
       {/* Slots - max 7 cards, sized to fit */}
-      <div className="flex flex-wrap justify-center gap-1.5">
+      <div className="flex flex-wrap justify-center gap-3">
         {sortedSlots.map((slot) => {
           const topCard = getTopCard(slot);
           const colors = slotColors[slot.color] || slotColors.gray;
@@ -198,31 +191,6 @@ export function MultiplayerSentenceBuilder({
 
         {/* Slots are fixed - no "add new slot" button in pattern-based mode */}
       </div>
-
-      {/* Turn indicator */}
-      <div className="text-center">
-        {isMyTurn ? (
-          <p className="text-amber-400 font-semibold animate-pulse">
-            {selectedCard ? `Tap a slot to place "${selectedCard.maori}"` : 'Select a card from your hand'}
-          </p>
-        ) : (
-          <p className="text-teal-200 text-sm">
-            {currentPlayerName} is building...
-          </p>
-        )}
-      </div>
-
-      {/* Cards played this turn indicator */}
-      {turnState.playedCards.length > 0 && (
-        <div className="flex items-center gap-2 text-white/60 text-sm">
-          <span>Played this turn:</span>
-          {turnState.playedCards.map((pc, i) => (
-            <span key={i} className="px-2 py-1 bg-white/20 rounded text-white">
-              {pc.card.maori}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

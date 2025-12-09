@@ -1,112 +1,88 @@
-# Kapu Ti - Continuation Prompt
+# HANDOVER: Kapu Tī - UI Polish Phase
 
-Copy and paste this prompt to continue development on Kapu Ti:
-
----
-
-## Project: Kapu Ti (Te Reo Maori Card Game)
-
-**Working Directory:** `/home/alex/ai-kitchen/projects/kapu-ti`
-**GitHub:** https://github.com/alexanderjamesmcleod/kapu-ti
-
-### What is Kapu Ti?
-
-Kapu Ti (Cup of Tea) is a multiplayer card game for learning Te Reo Maori. Players build grammatically correct sentences using color-coded word cards. First to empty their hand wins - the last player holding cards makes tea for everyone!
-
-### Tech Stack
-
-- **Next.js 15** (App Router, React 18)
-- **TypeScript**
-- **Tailwind CSS**
-- **WebSocket** (`ws` library) for online multiplayer
-- **Web Speech API** (TTS)
-
-### Completed Features
-
-1. **Single Player Mode** - 50 progressive challenges teaching Ko, He, Kei te sentence patterns
-2. **Pass-and-Play Multiplayer** - Local 2-4 player mode on one device
-3. **Online Multiplayer** - WebSocket-based real-time gameplay with room codes
-4. **Audio Pronunciation** - Integration with kupu.maori.nz
-5. **Grammar Validation** - Real-time sentence pattern validation
-
-### Key Files
-
-```
-src/
-├── app/
-│   ├── play/page.tsx           # Main play menu
-│   ├── play/online/page.tsx    # Online multiplayer entry
-│   └── play/challenges/page.tsx # Single player challenges
-├── components/
-│   ├── Card.tsx                # Word card component
-│   └── multiplayer/
-│       ├── OnlineLobby.tsx     # Create/join room UI
-│       ├── OnlineGame.tsx      # Online game board
-│       └── MultiplayerGame.tsx # Pass-and-play game
-├── hooks/
-│   ├── useOnlineGame.ts        # WebSocket hook
-│   └── useMultiplayerGame.ts   # Local game state
-├── lib/
-│   ├── sentenceValidator.ts    # Grammar validation
-│   └── audio.ts                # TTS utilities
-├── data/
-│   └── wordLibrary.ts          # 100+ vocabulary words
-└── types/
-    ├── index.ts                # Card types
-    └── multiplayer.types.ts    # Game state types
-
-server/
-├── index.ts                    # WebSocket server (port 3002)
-├── game-manager.ts             # Room management
-├── game-logic.ts               # Pure game functions
-└── types.ts                    # Message types
-```
-
-### Running the Project
-
-```bash
-# Install dependencies
-npm install
-
-# Start WebSocket server (for online play)
-npm run server
-
-# Start Next.js dev server
-npm run dev
-```
-
-### Remaining Roadmap
-
-- [ ] **Print-ready card PDF export** - Generate printable card sheets
-- [ ] **Speech-to-text validation** - Verify pronunciation with Web Speech API
-- [ ] **Deploy to Vercel** - With separate WebSocket host (Railway/Render)
-- [ ] **NZSL video integration** - Sign language videos for words
-- [ ] **PWA/Mobile app** - Offline support, app-like experience
-
-### Choose Next Feature
-
-What would you like to work on?
-
-1. **PDF Export** - Generate printable card PDFs for physical play
-2. **Deploy to Vercel** - Get the app live on the internet
-3. **Speech Recognition** - Validate Maori pronunciation using mic input
-4. **Other** - Describe what you'd like to build
+**Date:** December 9, 2025  
+**Project:** `/home/alex/ai-kitchen/projects/kapu-ti`  
+**Stack:** Next.js 15 + Turbopack, WebSocket server on 3102, frontend on 3100  
+**Restart:** `./restart.sh`
 
 ---
 
-### Recent Commits
+## What Is Kapu Tī
 
+Te Reo Māori multiplayer card game. Players build sentences by placing colored word cards into slots. Real-time multiplayer via WebSocket.
+
+---
+
+## What Just Got Fixed
+
+**Table shrinking bug** - RESOLVED ✅
+
+The game table was shrinking horizontally every time a card was played. After 3+ hours and 10+ failed attempts, the fix was changing from relative width (`w-full max-w-[900px]`) to fixed/viewport width:
+
+```tsx
+style={{ width: 'min(900px, calc(100vw - 32px))' }}
 ```
-5d5afae feat: Add online multiplayer with WebSocket server
-340e452 docs: Update README with completed features
-a5afdcc feat: Add multiplayer pass-and-play mode + 50 progressive challenges
-f029a58 Initial commit: Kapu Ti MVP
+
+Full details: `docs/BUGFIX-TABLE-SHRINKING.md`
+
+---
+
+## Current State
+
+- Desktop game view is functional, table no longer shrinks
+- GameTableV2 component replaced the old GameTable
+- Mobile view (MobileGameView.tsx) is separate and unchanged
+- UI works but needs polish
+
+---
+
+## Next Task
+
+**TASK-KT-043: UI Polish for Desktop Game View**
+
+Location: `kitchen/PREP_COOK/TASK-KT-043-ui-polish-desktop.md`
+
+Key improvements needed:
+1. **Table height** - Make responsive: `height: min(400px, 50vh)`
+2. **Sentence builder** - More spacing between card slots
+3. **Player avatars** - Slightly larger (w-14 h-14), better contrast
+4. **Hand section** - Dark theme to match (currently stark white)
+5. **Overall spacing** - Balance for common screen sizes
+
+---
+
+## Key Files
+
+- `/src/components/GameTableV2.tsx` - The fixed table component
+- `/src/components/MultiplayerSentenceBuilder.tsx` - Card slots in center
+- `/src/app/play/room/page.tsx` - Main game page (desktop around line 870+)
+- `/src/components/MobileGameView.tsx` - Mobile layout (ignore for now)
+
+---
+
+## Important Warning
+
+**DO NOT** change the width calculation in GameTableV2.tsx:
+```tsx
+style={{ width: 'min(900px, calc(100vw - 32px))' }}
 ```
+This fixed the shrinking bug. Use viewport/fixed values, not `w-full` or percentages.
 
-### Notes for AI
+---
 
-- Game rules are in `docs/MULTIPLAYER-DESIGN.md`
-- Sentence patterns: Ko (topic), He (classification), Kei te (present continuous)
-- Card colors map to word types (see README.md)
-- Audio fetched from `https://kupu.maori.nz/api/audio/{word}`
-- WebSocket server uses port 3002 (configurable via PORT env)
+## Testing
+
+1. Start game: `./restart.sh`
+2. Open two browser tabs to http://localhost:3100/play/room
+3. Create room in tab 1, join with code in tab 2
+4. Select topic, play cards
+5. Verify table doesn't shrink, UI looks balanced
+
+---
+
+## Alex's Preferences
+
+- Brief explanations, no code dumps in chat
+- Use Desktop Commander for all file operations
+- Write code directly to files, don't show in chat
+- Confirm before using any 3rd party tools
