@@ -88,22 +88,25 @@ function createSlotsFromPattern(patternInstance: PatternInstance): TableSlot[] {
   }));
 }
 
-// Generate a pattern instance for a topic
+// Generate a pattern instance for a topic (uses pattern as-is for grammatical correctness)
 function generatePatternForTopic(topicId: string): PatternInstance {
-  // Get a random pattern for this topic
+  // Get all patterns for this topic (any difficulty for variety)
+  const topicPatterns = SLOT_PATTERNS.filter(p => p.topicIds.includes(topicId));
+  
   let pattern: SentencePattern;
-  try {
-    pattern = getRandomPattern(topicId, 'beginner'); // Start with beginner patterns
-  } catch {
-    // Fall back to any pattern for the topic, or first pattern overall
-    const topicPatterns = SLOT_PATTERNS.filter(p => p.topicIds.includes(topicId));
-    pattern = topicPatterns.length > 0 ? topicPatterns[0] : SLOT_PATTERNS[0];
+  if (topicPatterns.length > 0) {
+    // Pick a random pattern from all available for this topic
+    pattern = topicPatterns[Math.floor(Math.random() * topicPatterns.length)];
+  } else {
+    // Fallback to any pattern
+    pattern = SLOT_PATTERNS[Math.floor(Math.random() * SLOT_PATTERNS.length)];
   }
 
   // Get vocabulary words for pattern generation
   const vocabulary = ALL_WORDS as Word[];
 
   // Generate the pattern instance with target words
+  // Pattern slots are used exactly as designed for grammatical correctness
   return generatePatternInstance(pattern, vocabulary);
 }
 
@@ -190,15 +193,59 @@ function dealTurnOrderCards(playerCount: number): TurnOrderCard[] {
   }));
 }
 
+// Generate a hand with guaranteed color diversity (at least one of each common color)
+function generateDiverseHand(cardsPerPlayer: number, existingCardIds: Set<string>): Card[] {
+  const hand: Card[] = [];
+  const usedCardIds = new Set(existingCardIds);
+  
+  // Core colors used in patterns - ensure at least one of each
+  const coreColors = ['purple', 'gray', 'blue', 'red', 'green', 'lightblue', 'yellow'];
+  
+  // First, add one card of each core color (up to cardsPerPlayer)
+  for (const color of coreColors) {
+    if (hand.length >= cardsPerPlayer) break;
+    
+    const words = getWordsByColor(color);
+    const available = words.filter(w => !usedCardIds.has(`${w.maori}-${color}`));
+    
+    if (available.length > 0) {
+      const word = available[Math.floor(Math.random() * available.length)];
+      const card = {
+        ...wordToCard(word),
+        id: `${word.maori}-${color}-${generateId()}`
+      };
+      hand.push(card);
+      usedCardIds.add(card.id);
+    }
+  }
+  
+  // Fill remaining slots with random cards
+  const allColors = ['purple', 'gray', 'blue', 'red', 'green', 'lightblue', 'yellow', 'orange', 'pink', 'brown', 'teal'];
+  while (hand.length < cardsPerPlayer) {
+    const color = allColors[Math.floor(Math.random() * allColors.length)];
+    const words = getWordsByColor(color);
+    const available = words.filter(w => !usedCardIds.has(`${w.maori}-${color}`));
+    
+    if (available.length > 0) {
+      const word = available[Math.floor(Math.random() * available.length)];
+      const card = {
+        ...wordToCard(word),
+        id: `${word.maori}-${color}-${generateId()}`
+      };
+      hand.push(card);
+      usedCardIds.add(card.id);
+    }
+  }
+  
+  return shuffle(hand);
+}
+
 // Initialize a new game
 export function initializeGame(
   playerIds: string[],
   playerNames: string[],
   settings: GameSettings = DEFAULT_GAME_SETTINGS
 ): MultiplayerGame {
-  // Create all cards and shuffle
-  const allCards = shuffle(ALL_WORDS.map(wordToCard));
-
   // Deal turn order cards first to determine seating order
   const turnOrderCards = dealTurnOrderCards(playerIds.length);
 
@@ -216,18 +263,32 @@ export function initializeGame(
   // Reorder turn order cards to match sorted players
   const sortedTurnOrderCards = playerData.map(p => p.turnOrderCard);
 
-  // Create players in sorted order and deal cards
-  const players: Player[] = playerData.map((data, index) => ({
-    id: data.id,
-    name: data.name,
-    hand: allCards.splice(0, settings.cardsPerPlayer),
-    score: 0,  // Initialize score to 0
-    isActive: true,
-    position: index,  // Position is now based on turn order (highest first)
-  }));
+  // Track used card IDs across all players to avoid duplicates
+  const usedCardIds = new Set<string>();
 
-  // Remaining cards go to draw pile
-  const drawPile = allCards;
+  // Create players with diverse hands (guaranteed playable cards)
+  const players: Player[] = playerData.map((data, index) => {
+    const hand = generateDiverseHand(settings.cardsPerPlayer, usedCardIds);
+    // Track all cards dealt
+    hand.forEach(c => usedCardIds.add(c.id));
+    
+    return {
+      id: data.id,
+      name: data.name,
+      hand,
+      score: 0,
+      isActive: true,
+      position: index,
+    };
+  });
+
+  // Create draw pile from remaining cards (not dealt to players)
+  const drawPile = shuffle(
+    ALL_WORDS
+      .map(wordToCard)
+      .map(card => ({ ...card, id: `${card.maori}-${card.color}-${generateId()}` }))
+      .filter(card => !usedCardIds.has(card.id))
+  );
 
   // Create starting table slots
   const tableSlots = createInitialSlots(settings.startingPattern);
@@ -936,7 +997,7 @@ export function getAvailableTopics(): GameTopic[] {
 }
 
 // Select a topic (by the turn order winner)
-// This now also generates a sentence pattern for the round and refreshes player hands
+// This generates a sentence pattern for the round but KEEPS existing player hands
 export function selectTopic(
   game: MultiplayerGame,
   playerId: string,
@@ -961,38 +1022,18 @@ export function selectTopic(
     return { success: false, game, error: 'Invalid topic' };
   }
 
-  // Generate a sentence pattern for this topic
+  // Generate a sentence pattern for this topic with random length (2-7 slots)
   const patternInstance = generatePatternForTopic(topicId);
 
-  // Create table slots from the pattern (replaces startingPattern-based slots)
+  // Create table slots from the pattern
   const tableSlots = createSlotsFromPattern(patternInstance);
 
-  // Refresh player hands with topic-aware cards
-  // Each player gets cards that are 60%+ matching the pattern colors
-  const usedCardIds = new Set<string>();
-  const updatedPlayers = game.players.map(player => {
-    if (!player.isActive) return player; // Don't refresh inactive players
-
-    // Keep track of how many cards the player had
-    const cardCount = player.hand.length;
-
-    // Generate new topic-aware hand
-    const newHand = generateTopicAwareHand(patternInstance, cardCount, usedCardIds);
-
-    // Track used card IDs to avoid duplicates across players
-    newHand.forEach(c => usedCardIds.add(c.id));
-
-    return {
-      ...player,
-      hand: newHand,
-    };
-  });
+  // NOTE: Player hands are NOT reset - cards persist between rounds
 
   return {
     success: true,
     game: {
       ...game,
-      players: updatedPlayers,
       currentTopic: {
         id: topic.id,
         name: topic.name,
